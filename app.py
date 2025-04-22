@@ -19,7 +19,7 @@ if calc_mode == "Estimate for full year":
 
 # --- Inputs ---
 if calc_mode == "Estimate for single paycheck":
-    gross_pay = st.number_input("Gross Pay This Period ($)", min_value=0.0, value=0)
+    gross_pay = st.number_input("Gross Pay This Period ($)", min_value=0.0, value=0.0)
 else:
     if income_type == "Salary":
         gross_pay = st.number_input("Annual Salary ($)", min_value=0.0, value=0)
