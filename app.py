@@ -264,8 +264,8 @@ def calculate_taxes(
     return quantize(fed), quantize(ss), quantize(mi), quantize(net)
 
 # === STREAMLIT UI ===
-st.set_page_config(page_title="Precision Withholding", page_icon="💸", layout="wide")
-st.title("Precision Withholding Calculator (2024 Pub 15‑T + IRS 1040)")
+st.set_page_config(page_title=" Withholding", page_icon="💸", layout="wide")
+st.title(" Withholding Calculator (2024 Pub 15‑T + IRS 1040)")
 
 with st.sidebar:
     mode = st.radio("Mode", ["Single Paycheck", "Full Year"])
