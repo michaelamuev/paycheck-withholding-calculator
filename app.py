@@ -1,6 +1,20 @@
 import streamlit as st
 import pandas as pd
 
+# --- Page config ---
+st.set_page_config(
+    page_title="Mike's Paycheck Calculator 💸",
+    page_icon="💸",
+    layout="centered"
+)
+
+# --- Optional Logo ---
+st.image("logo.png", width=80)
+
+# --- Header ---
+st.title("Mike's Paycheck Withholding Tool")
+st.caption("Built with Python • Powered by IRS Pub 15-T")
+
 # --- Load IRS Wage Bracket CSV ---
 @st.cache_data
 def load_wage_data():
@@ -8,10 +22,7 @@ def load_wage_data():
 
 wage_df = load_wage_data()
 
-# --- Title and UI ---
-st.title("Federal Paycheck Calculator (2024)")
-st.caption("Powered by IRS Wage Bracket Tables (Pub 15-T)")
-
+# --- Inputs ---
 gross_pay = st.number_input("Gross Pay This Period ($)", min_value=0.0, value=1000.0)
 pay_frequency = st.selectbox("Pay Frequency", ["weekly", "biweekly", "semimonthly", "monthly"])
 filing_status = st.selectbox("Filing Status", ["single", "married", "head"])
@@ -61,3 +72,4 @@ if st.button("Calculate Take Home Pay"):
     st.subheader("Paycheck Breakdown:")
     for k, v in results.items():
         st.write(f"{k}: ${v}")
+
