@@ -9,7 +9,7 @@ st.set_page_config(
 
 # --- Header ---
 st.title("Withholding Tool")
-st.caption("Built with Python • Powered by IRS Percentage Method")
+st.caption("Built with Python • Powered by IRS Percentage Method Tables")
 
 # --- Input: Calculation Mode ---
 calc_mode = st.radio("Select Calculation Mode:", ["Estimate for single paycheck", "Estimate for full year"])
@@ -26,7 +26,7 @@ elif income_type == "Salary":
 else:
     hourly_rate = st.number_input("Hourly Rate ($)", min_value=0.0, value=20.0)
     weekly_hours = st.number_input("Average Hours Worked Per Week", min_value=0.0, value=40.0)
-    weeks_per_year = st.number_input("Weeks Worked Per Year", min_value=0.0, value=52.0)  # Presumed default full year
+    weeks_per_year = st.number_input("Weeks Worked Per Year", min_value=0.0, value=52.0)
     gross_pay = hourly_rate * weekly_hours * weeks_per_year
 
 pay_frequency = st.selectbox("Pay Frequency", ["weekly", "biweekly", "semimonthly", "monthly"])
@@ -40,39 +40,42 @@ extra_withholding = st.number_input("Additional Withholding (Step 4c)", min_valu
 # --- Frequency Map ---
 frequency_map = {"weekly": 52, "biweekly": 26, "semimonthly": 24, "monthly": 12}
 
-# --- IRS Percentage Method ---
-def percentage_method(filing_status, taxable_annual_wages):
-    # Brackets could be updated with the current year's IRS tax brackets
-    brackets = {
-        "single": [(0, 0.10, 0), (11000, 0.12, 1100), (44725, 0.22, 5147), (95375, 0.24, 16290),
-                   (182100, 0.32, 37104), (231250, 0.35, 52832), (578125, 0.37, 174238.25)],
-        "married": [(0, 0.10, 0), (22000, 0.12, 2200), (89450, 0.22, 10294), (190750, 0.24, 32580),
-                    (364200, 0.32, 74208), (462500, 0.35, 105664), (693750, 0.37, 186601.50)],
-        "head": [(0, 0.10, 0), (15700, 0.12, 1570), (59850, 0.22, 6868), (95350, 0.24, 14678),
-                 (182100, 0.32, 35498), (231250, 0.35, 51226), (578100, 0.37, 172623.50)]
+# --- Per-Pay-Period Percentage Method ---
+def percentage_method_periodic(filing_status, gross_pay, pay_frequency):
+    # Update this dictionary with the correct brackets and rates from Publication 15-T
+    periodic_brackets = {
+        "weekly": {
+            "single": [
+                (0, 87, 0.00, 0),  # Exempt bracket
+                (88, 443, 0.10, 87),
+                (444, 1538, 0.12, 443),
+                (1539, 3596, 0.22, 1538),
+                (3597, float('inf'), 0.24, 3596)
+            ]
+        },
+        # Add other frequencies and filing statuses here
     }
-    for min_wage, rate, base_tax in reversed(brackets[filing_status]):
-        if taxable_annual_wages > min_wage:
-            return base_tax + (taxable_annual_wages - min_wage) * rate
+
+    brackets = periodic_brackets[pay_frequency][filing_status]
+
+    for b in brackets:
+        if gross_pay <= b[1]:
+            return (gross_pay - b[3]) * b[2]
+
     return 0.0
 
 # --- Calculation Logic ---
 def calculate():
     try:
-        periods_per_year = frequency_map[pay_frequency]
-        annual_gross = gross_pay if calc_mode == "Estimate for full year" else gross_pay * periods_per_year
+        if calc_mode == "Estimate for single paycheck":
+            taxable_income = gross_pay + other_income - deductions - (dependents_amount * 2000 / frequency_map[pay_frequency])
+        else:
+            taxable_income = gross_pay + other_income - deductions - (dependents_amount * 2000)
 
-        if step_2_checked:
-            annual_gross += 8000
-
-        taxable_income = annual_gross + other_income - deductions - (dependents_amount * 2000)
         taxable_income = max(taxable_income, 0)
-
-        fed_withholding = percentage_method(filing_status, taxable_income) / periods_per_year
-        fed_withholding += extra_withholding
-
-        social_security = min(annual_gross, 147000) * 0.062 / periods_per_year
-        medicare = annual_gross * 0.0145 / periods_per_year
+        fed_withholding = percentage_method_periodic(filing_status, taxable_income, pay_frequency) + extra_withholding
+        social_security = min(taxable_income, 147000) * 0.062 / frequency_map[pay_frequency]
+        medicare = taxable_income * 0.0145 / frequency_map[pay_frequency]
 
         total_tax = fed_withholding + social_security + medicare
         net_pay = gross_pay - total_tax
