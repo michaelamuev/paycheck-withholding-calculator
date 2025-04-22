@@ -9,7 +9,7 @@ st.set_page_config(
 
 # --- Header ---
 st.title("Withholding Tool")
-st.caption("Direct port of your notebook logic")
+st.caption("Built with Python • Powered by IRS Percentage Method")
 
 # --- Calculation Mode ---
 mode = st.radio("Select calculation mode:", ["Estimate for single paycheck", "Estimate for full year"])
