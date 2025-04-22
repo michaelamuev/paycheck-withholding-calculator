@@ -248,7 +248,7 @@ def calculate_taxes(
         if annual
         else calculate_periodic_pct_tax(status, taxable / periods, period) * periods
     )
-     dep_credit = DEPENDENT_CREDIT * dependents
+    dep_credit = DEPENDENT_CREDIT * dependents
     dep_credit = dep_credit if annual else dep_credit / periods
 
     fed_annual = max(fed_annual - dep_credit, Decimal('0'))
