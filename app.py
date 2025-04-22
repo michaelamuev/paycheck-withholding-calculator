@@ -299,4 +299,4 @@ if st.button("Calculate"):
     eff = (fed / gross) * (Decimal('1') if annual else PERIODS[period])
 
 if st.button("Calculate"):
-    st.caption(f"Effective Federal Rate: {eff.quantize(Decimal('0.0001')):.2%}") perfect? 
+    st.caption(f"Effective Federal Rate: {eff.quantize(Decimal('0.0001')):.2%}") 
