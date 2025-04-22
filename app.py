@@ -41,6 +41,16 @@ extra_withholding = st.number_input("Additional Withholding (Step 4c)", min_valu
 frequency_map = {"weekly": 52, "biweekly": 26, "semimonthly": 24, "monthly": 12}
 
 # --- IRS Percentage Method ---
+
+
+
+
+
+
+
+
+
+
 def percentage_method(filing_status, taxable_annual_wages):
     brackets = {
         "single": [
@@ -78,6 +88,13 @@ def percentage_method(filing_status, taxable_annual_wages):
             return base_tax + (taxable_annual_wages - min_wage) * rate
     return 0.0
 
+
+
+
+
+
+
+
 # --- Per-Pay-Period Percentage Method ---
 def percentage_method_periodic(filing_status, gross_pay, pay_frequency):
     # 2024 IRS Weekly Percentage Brackets (simplified for now)
@@ -105,44 +122,52 @@ def percentage_method_periodic(filing_status, gross_pay, pay_frequency):
     return 0.0
 
 
+
+
+
+
+
+
+
 # --- Calculation Logic ---
 def calculate():
     try:
         periods_per_year = frequency_map[pay_frequency]
 
         if calc_mode == "Estimate for single paycheck":
-            annual_gross = gross_pay * periods_per_year
-        else:
-            annual_gross = gross_pay  # already annual for salary/hourly
-
-        # Step 2 Adjustment
-        if step_2_checked:
-            annual_gross += 8000
-
-        # Taxable Income Adjustments
-        taxable_income = annual_gross + other_income - deductions - (dependents_amount * 2000)
-        taxable_income = max(taxable_income, 0)
-
-        if calc_mode == "Estimate for single paycheck":
+            # No annualization here
+            taxable_income = gross_pay + other_income - deductions - (dependents_amount * 2000 / periods_per_year)
+            taxable_income = max(taxable_income, 0)
             fed_withholding = percentage_method_periodic(filing_status, taxable_income, pay_frequency)
+            fed_withholding += extra_withholding
+
+            # FICA for single paycheck
+            social_security = min(gross_pay, 168600 / periods_per_year) * 0.062
+            medicare = gross_pay * 0.0145
+
+            total_tax = fed_withholding + social_security + medicare
+            net_pay = gross_pay - total_tax
+
         else:
+            # Annual mode
+            annual_gross = gross_pay * periods_per_year if income_type == "Hourly" else gross_pay
+
+            if step_2_checked:
+                annual_gross += 8000
+
+            taxable_income = annual_gross + other_income - deductions - (dependents_amount * 2000)
+            taxable_income = max(taxable_income, 0)
+
             fed_annual = percentage_method(filing_status, taxable_income)
-            fed_withholding = fed_annual
+            fed_withholding = fed_annual / periods_per_year
+            fed_withholding += extra_withholding * periods_per_year
 
+            # FICA annualized
+            social_security = min(annual_gross, 168600) * 0.062 / periods_per_year
+            medicare = annual_gross * 0.0145 / periods_per_year
 
-        fed_withholding += extra_withholding if calc_mode == "Estimate for single paycheck" else extra_withholding * periods_per_year
-
-        # FICA Taxes
-        social_security = min(annual_gross, 168600) * 0.062
-        medicare = annual_gross * 0.0145
-
-        if calc_mode == "Estimate for single paycheck":
-            social_security /= periods_per_year
-            medicare /= periods_per_year
-
-        total_tax = fed_withholding + social_security + medicare
-        net_pay = gross_pay if calc_mode == "Estimate for single paycheck" else annual_gross
-        net_pay -= total_tax
+            total_tax = fed_withholding + social_security + medicare
+            net_pay = annual_gross / periods_per_year - total_tax
 
         return {
             "Federal Withholding": round(fed_withholding, 2),
@@ -150,8 +175,15 @@ def calculate():
             "Medicare": round(medicare, 2),
             "Net Pay": round(net_pay, 2)
         }
+
     except Exception as e:
         return {"Error": str(e)}
+
+
+
+
+
+
 
 # --- Output ---
 if st.button("Calculate"):
