@@ -97,19 +97,45 @@ def percentage_method(filing_status, taxable_annual_wages):
 
 # --- Per-Pay-Period Percentage Method ---
 def percentage_method_periodic(filing_status, gross_pay, pay_frequency):
-    # 2024 IRS Weekly Percentage Brackets (simplified for now)
-    periodic_brackets = {
-        "weekly": {
-            "single": [
-                (88, 0.00, 0),  # No withholding under $88
-                (89, 443, 0.10, 88),
-                (444, 1538, 0.12, 443),
-                (1539, 3596, 0.22, 1538),
-                (3597, float('inf'), 0.24, 3596)
-            ]
-        }
-        # Add biweekly/semimonthly/monthly if needed later
+   periodic_brackets = {
+    "weekly": {
+        "single": [
+            (88, 0.00, 0),
+            (89, 443, 0.10, 88),
+            (444, 1538, 0.12, 443),
+            (1539, 3596, 0.22, 1538),
+            (3597, float('inf'), 0.24, 3596)
+        ]
+    },
+    "biweekly": {
+        "single": [
+            (176, 0.00, 0),
+            (177, 886, 0.10, 176),
+            (887, 3077, 0.12, 886),
+            (3078, 7192, 0.22, 3077),
+            (7193, float('inf'), 0.24, 7192)
+        ]
+    },
+    "semimonthly": {
+        "single": [
+            (192, 0.00, 0),
+            (193, 959, 0.10, 192),
+            (960, 3317, 0.12, 959),
+            (3318, 7750, 0.22, 3317),
+            (7751, float('inf'), 0.24, 7750)
+        ]
+    },
+    "monthly": {
+        "single": [
+            (384, 0.00, 0),
+            (385, 1917, 0.10, 384),
+            (1918, 6633, 0.12, 1917),
+            (6634, 15500, 0.22, 6633),
+            (15501, float('inf'), 0.24, 15500)
+        ]
     }
+}
+
 
     brackets = periodic_brackets[pay_frequency][filing_status]
 
