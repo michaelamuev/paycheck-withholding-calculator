@@ -237,9 +237,10 @@ def calculate_taxes(
 ) -> tuple[Decimal, Decimal, Decimal, Decimal]:
     periods = PERIODS[period]
     base = gross if annual else gross * periods
-    taxable = base + other_inc - STANDARD_DEDUCTION[status] - deducts
     if multiple_jobs:
-        taxable -= MULTI_JOB_ADJUST[status]
+        base += MULTI_JOB_ADJUST[status]
+    taxable = base + other_inc - STANDARD_DEDUCTION[status] - deducts
+
     taxable = max(taxable, Decimal('0'))
 
     fed_annual = (
@@ -247,8 +248,12 @@ def calculate_taxes(
         if annual
         else calculate_periodic_pct_tax(status, taxable / periods, period) * periods
     )
-    fed_annual = max(fed_annual - DEPENDENT_CREDIT * dependents, Decimal('0'))
+     dep_credit = DEPENDENT_CREDIT * dependents
+    dep_credit = dep_credit if annual else dep_credit / periods
+
+    fed_annual = max(fed_annual - dep_credit, Decimal('0'))
     fed_annual += extra_wh * periods
+
     fed = fed_annual if annual else fed_annual / periods
 
     ss_annual = min(base, FICA_CAP) * SOCIAL_RATE
