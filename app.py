@@ -135,22 +135,26 @@ def calculate():
         periods_per_year = frequency_map[pay_frequency]
 
         if calc_mode == "Estimate for single paycheck":
-            # No annualization here
+            # Per paycheck: DO NOT annualize
             taxable_income = gross_pay + other_income - deductions - (dependents_amount * 2000 / periods_per_year)
             taxable_income = max(taxable_income, 0)
-            fed_withholding = percentage_method_periodic(filing_status, taxable_income, pay_frequency)
+
+            fed_withholding = percentage_method(filing_status, taxable_income)
             fed_withholding += extra_withholding
 
-            # FICA for single paycheck
-            social_security = min(gross_pay, 168600 / periods_per_year) * 0.062
+            # FICA
+            social_security = min(gross_pay * periods_per_year, 168600) * 0.062 / periods_per_year
             medicare = gross_pay * 0.0145
 
             total_tax = fed_withholding + social_security + medicare
             net_pay = gross_pay - total_tax
 
         else:
-            # Annual mode
-            annual_gross = gross_pay * periods_per_year if income_type == "Hourly" else gross_pay
+            # Annual Estimate: Full annual logic
+            if income_type == "Hourly":
+                annual_gross = gross_pay  # Already annualized
+            else:
+                annual_gross = gross_pay
 
             if step_2_checked:
                 annual_gross += 8000
@@ -159,15 +163,14 @@ def calculate():
             taxable_income = max(taxable_income, 0)
 
             fed_annual = percentage_method(filing_status, taxable_income)
-            fed_withholding = fed_annual / periods_per_year
+            fed_withholding = fed_annual
             fed_withholding += extra_withholding * periods_per_year
 
-            # FICA annualized
-            social_security = min(annual_gross, 168600) * 0.062 / periods_per_year
-            medicare = annual_gross * 0.0145 / periods_per_year
+            social_security = min(annual_gross, 168600) * 0.062
+            medicare = annual_gross * 0.0145
 
             total_tax = fed_withholding + social_security + medicare
-            net_pay = annual_gross / periods_per_year - total_tax
+            net_pay = annual_gross - total_tax
 
         return {
             "Federal Withholding": round(fed_withholding, 2),
@@ -178,6 +181,7 @@ def calculate():
 
     except Exception as e:
         return {"Error": str(e)}
+
 
 
 
