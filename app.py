@@ -78,6 +78,33 @@ def percentage_method(filing_status, taxable_annual_wages):
             return base_tax + (taxable_annual_wages - min_wage) * rate
     return 0.0
 
+# --- Per-Pay-Period Percentage Method ---
+def percentage_method_periodic(filing_status, gross_pay, pay_frequency):
+    # 2024 IRS Weekly Percentage Brackets (simplified for now)
+    periodic_brackets = {
+        "weekly": {
+            "single": [
+                (88, 0.00, 0),  # No withholding under $88
+                (89, 443, 0.10, 88),
+                (444, 1538, 0.12, 443),
+                (1539, 3596, 0.22, 1538),
+                (3597, float('inf'), 0.24, 3596)
+            ]
+        }
+        # Add biweekly/semimonthly/monthly if needed later
+    }
+
+    brackets = periodic_brackets[pay_frequency][filing_status]
+
+    for b in brackets:
+        if len(b) == 3 and gross_pay <= b[0]:  # Exempt range
+            return 0.0
+        elif len(b) == 4 and gross_pay > b[0] and gross_pay <= b[1]:
+            return (gross_pay - b[3]) * b[2]
+
+    return 0.0
+
+
 # --- Calculation Logic ---
 def calculate():
     try:
@@ -96,10 +123,12 @@ def calculate():
         taxable_income = annual_gross + other_income - deductions - (dependents_amount * 2000)
         taxable_income = max(taxable_income, 0)
 
-        fed_annual = percentage_method(filing_status, taxable_income)
-        st.write(f"DEBUG: taxable_income={taxable_income}, fed_annual={fed_annual}, gross_pay={gross_pay}, periods_per_year={periods_per_year}")
+        if calc_mode == "Estimate for single paycheck":
+            fed_withholding = percentage_method_periodic(filing_status, taxable_income, pay_frequency)
+        else:
+            fed_annual = percentage_method(filing_status, taxable_income)
+            fed_withholding = fed_annual
 
-        fed_withholding = fed_annual / periods_per_year if calc_mode == "Estimate for single paycheck" else fed_annual
 
         fed_withholding += extra_withholding if calc_mode == "Estimate for single paycheck" else extra_withholding * periods_per_year
 
