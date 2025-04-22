@@ -1,194 +1,186 @@
 import streamlit as st
 
-# === TAX CONFIG (2024 Pub 15‑T Percentage Method) ===
-TAX_CONFIG = {
-    "standard_deduction": {"single": 14600, "married": 29200, "head": 21900},
-    "dependent_credit": 2000,
-    "brackets": {
-        "single": [
-            {"min": 0,      "rate": 0.10, "base":      0},
-            {"min": 11600,  "rate": 0.12, "base":   1160},
-            {"min": 47150,  "rate": 0.22, "base":   5146},
-            {"min": 95375,  "rate": 0.24, "base":  16290},
-            {"min": 182100, "rate": 0.32, "base":  37104},
-            {"min": 231250, "rate": 0.35, "base":  52832},
-            {"min": 578125, "rate": 0.37, "base": 174238},
-        ],
-        "married": [
-            {"min": 0,      "rate": 0.10, "base":    0},
-            {"min": 23200,  "rate": 0.12, "base":  2320},
-            {"min": 94300,  "rate": 0.22, "base": 10294},
-            {"min": 190750, "rate": 0.24, "base": 32580},
-            {"min": 364200, "rate": 0.32, "base": 74208},
-            {"min": 462500, "rate": 0.35, "base":105664},
-            {"min": 693750, "rate": 0.37, "base":186601},
-        ],
-        "head": [
-            {"min": 0,      "rate": 0.10, "base":    0},
-            {"min": 17400,  "rate": 0.12, "base":  1740},
-            {"min": 64700,  "rate": 0.22, "base":  7198},
-            {"min": 95350,  "rate": 0.24, "base": 14678},
-            {"min": 182100, "rate": 0.32, "base": 35498},
-            {"min": 231250, "rate": 0.35, "base": 51226},
-            {"min": 578100, "rate": 0.37, "base":172623},
-        ],
+# ─── App Configuration ────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Mike's Calculator 💸",
+    page_icon="💸",
+    layout="wide",
+)
+st.title("Mike’s Federal Withholding Calculator")
+st.caption("Per‑Period Pub 15‑T Tables & Annual Percentage Method (2024)")
+
+# ─── Embed Pub 15‑T Table 2 (per‑period) ────────────────────────────────────────
+# Weekly brackets from IRS Pub 15‑T Table 2(a) for “Automated Payroll Systems”
+_weekly = {
+    "single": [
+        (0,    88,   0.10,   0.00),
+        (88,   443,  0.12,   8.80),
+        (443,  1538, 0.22,  51.80),
+        (1538, float("inf"), 0.24, 359.60),
+    ],
+    "married": [
+        (0,    176,  0.10,    0.00),
+        (176,  886,  0.12,   17.60),
+        (886,  3076, 0.22,  103.52),
+        (3076, float("inf"), 0.24, 716.08),
+    ],
+    "head": [
+        (0,    129,  0.10,    0.00),
+        (129,  598,  0.12,   12.90),
+        (598,  1538, 0.22,   72.06),
+        (1538, float("inf"), 0.24, 359.60),
+    ],
+}
+
+# Build biweekly/semimonthly/monthly by scaling weekly thresholds
+periodic_brackets = {
+    "weekly":  _weekly,
+    "biweekly": {
+        status: [
+            (low*2, high*2 if high!=float("inf") else float("inf"), rate, base*2)
+            for (low, high, rate, base) in _weekly[status]
+        ]
+        for status in _weekly
+    },
+    "semimonthly": {
+        status: [
+            (low*(26/24), high*(26/24) if high!=float("inf") else float("inf"), rate, base*(26/24))
+            for (low, high, rate, base) in _weekly[status]
+        ]
+        for status in _weekly
+    },
+    "monthly": {
+        status: [
+            (low*(52/12), high*(52/12) if high!=float("inf") else float("inf"), rate, base*(52/12))
+            for (low, high, rate, base) in _weekly[status]
+        ]
+        for status in _weekly
     }
 }
 
-FREQ_MAP = {"weekly": 52, "biweekly": 26, "semimonthly": 24, "monthly": 12}
+def lookup_periodic_withholding(status, freq, wages):
+    """Returns federal withholding for one paycheck via Pub 15‑T Table 2."""
+    for low, high, rate, base in periodic_brackets[freq][status]:
+        if low < wages <= high:
+            return round(base + (wages - low)*rate, 2)
+    return 0.0
 
+# ─── Annual Percentage‑Method Tables & Constants ─────────────────────────────
+PCT_TABLES = {
+    "single": [
+        (0,       0.10,      0),
+        (11600,   0.12,   1160),
+        (47150,   0.22,   5146),
+        (95375,   0.24,  16290),
+        (182100,  0.32,  37104),
+        (231250,  0.35,  52832),
+        (578125,  0.37, 174238),
+    ],
+    "married":[
+        (0,       0.10,      0),
+        (23200,   0.12,   2320),
+        (94300,   0.22,  10294),
+        (190750,  0.24,  32580),
+        (364200,  0.32,  74208),
+        (462500,  0.35, 105664),
+        (693750,  0.37, 186601),
+    ],
+    "head":   [
+        (0,       0.10,      0),
+        (17400,   0.12,   1740),
+        (64700,   0.22,   7198),
+        (95350,   0.24,  14678),
+        (182100,  0.32,  35498),
+        (231250,  0.35,  51226),
+        (578100,  0.37, 172623),
+    ],
+}
+STD_DEDUCTION    = {"single":14600, "married":29200, "head":21900}
+DEPENDENT_CREDIT = 2000
 
-# === UTILS ===
-def find_bracket(filing_status, taxable):
-    """Return the marginal bracket (base, rate, min) for given taxable income."""
-    for b in reversed(TAX_CONFIG["brackets"][filing_status]):
-        if taxable >= b["min"]:
-            return b
-    return TAX_CONFIG["brackets"][filing_status][0]
+def annual_pct_tax(status, taxable):
+    """Compute annual federal tax via IRS Percentage Method (Table 1)."""
+    for mn, rate, base in reversed(PCT_TABLES[status]):
+        if taxable >= mn:
+            return round(base + (taxable - mn)*rate, 2)
+    return 0.0
 
-
-def compute_percent_method(taxable):
-    """Compute annual federal tax via percentage method given taxable income and filing_status."""
-    bracket = find_bracket(filing_status, taxable)
-    return bracket["base"] + (taxable - bracket["min"]) * bracket["rate"]
-
-
-# === UI LAYOUT ===
-st.set_page_config(page_title="Mike's Calculator 💸", page_icon="💸", layout="wide")
-st.title("Withholding Tool — 2024 Earnings")
-st.write("Built with Python • IRS Pub 15‑T Percentage Method")
-
+# ─── Sidebar Inputs ───────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Inputs")
-    # Mode
-    mode = st.radio("Calculation mode", ["Single Paycheck", "Full Year"])
-    annual = (mode == "Full Year")
+    mode        = st.radio("Mode", ["Single Paycheck","Full Year"])
+    is_annual   = (mode == "Full Year")
+    if is_annual:
+        inc_type = st.radio("Income Type", ["Salary","Hourly"])
 
-    # Income type
-    if annual:
-        income_type = st.radio("Income type", ["Salary", "Hourly"])
-    else:
-        income_type = "Salary"  # unneeded but defined
-
-    # Gross pay
-    if annual:
-        if income_type == "Salary":
-            gross_annual = st.number_input(
-                "Annual salary ($)",
-                min_value=0.0,
-                value=50000.0,
-                help="Total gross pay for the year."
-            )
+    if is_annual:
+        if inc_type=="Salary":
+            gross_annual = st.number_input("Annual salary ($)", 0.0, 1e7, 50000.0)
         else:
-            hourly_rate = st.number_input(
-                "Hourly rate ($)",
-                min_value=0.0,
-                value=20.0,
-                help="Before-tax hourly rate."
-            )
-            hours_per_week = st.number_input(
-                "Hours per week",
-                min_value=0.0,
-                value=40.0,
-                help="Average hours worked each week."
-            )
-            gross_annual = hourly_rate * hours_per_week * 52
+            hr_rate  = st.number_input("Hourly rate ($)", 0.0, 1e4, 20.0)
+            hrs_week = st.number_input("Hours per week", 0.0, 168.0, 40.0)
+            gross_annual = hr_rate * hrs_week * 52.0
     else:
-        gross_pay = st.number_input(
-            "Gross pay this period ($)",
-            min_value=0.0,
-            value=1000.0,
-            help="Gross pay for this check."
-        )
+        gross_pay = st.number_input("Gross pay this period ($)", 0.0, 1e6, 1000.0)
 
-    # W‑4 fields
-    st.subheader("W‑4 / Deductions")
-    step_2_checked = st.checkbox(
-        "Step 2: Multiple jobs?",
-        help="If checked, increases withholding (not yet implemented)."
-    )
-    dependents_amount = st.number_input(
-        "Dependent claims (Step 3)",
-        min_value=0.0,
-        value=0.0,
-        help="$2,000 tax credit per dependent."
-    )
-    other_income = st.number_input(
-        "Other income (Step 4a)",
-        min_value=0.0,
-        value=0.0,
-        help="Annual other income added to wages."
-    )
-    deductions = st.number_input(
-        "Deductions (Step 4b)",
-        min_value=0.0,
-        value=0.0,
-        help="Annual deductions reducing taxable income."
-    )
-    extra_withholding = st.number_input(
-        "Extra withholding (Step 4c) per check",
-        min_value=0.0,
-        value=0.0,
-        help="Additional tax per paycheck."
-    )
+    step2        = st.checkbox("Step 2: Multiple jobs?")  # implement later
+    dependents   = st.number_input("Dependents (Step 3)", 0.0, 50.0, 0.0)
+    other_inc    = st.number_input("Other income (4a)", 0.0, 1e6, 0.0)
+    deducs       = st.number_input("Deductions (4b)",   0.0, 1e6, 0.0)
+    extra_wd     = st.number_input("Extra withholding per check (4c)", 0.0, 1e5, 0.0)
 
-    # Filing & frequency
-    st.subheader("Filing & Frequency")
-    filing_status = st.selectbox("Filing status", list(TAX_CONFIG["brackets"].keys()))
-    pay_freq = st.selectbox("Pay frequency", list(FREQ_MAP.keys()))
-    periods = FREQ_MAP[pay_freq]
+    st.markdown("---")
+    filing_status = st.selectbox("Filing status", list(PCT_TABLES.keys()))
+    pay_freq      = st.selectbox("Pay frequency", list(periodic_brackets.keys()))
+    periods       = {"weekly":52,"biweekly":26,"semimonthly":24,"monthly":12}[pay_freq]
 
-
-# === CALCULATE & SHOW RESULTS ===
+# ─── Compute & Display Results ─────────────────────────────────────────────────
 if st.button("Calculate"):
-    # Validate
-    if not annual and gross_pay == 0:
-        st.error("Enter some gross pay for this period.")
+    # validate
+    if not is_annual and gross_pay<=0:
+        st.error("Enter a positive gross pay for this period.")
         st.stop()
 
-    # Compute taxable income
-    if annual:
-        # full year
-        adj_income = gross_annual + other_income - TAX_CONFIG["standard_deduction"][filing_status] - deductions
-        taxable = max(adj_income, 0)
-        fed_annual = compute_percent_method(taxable)
-        # dependent credit
-        fed_annual = max(fed_annual - dependents_amount * TAX_CONFIG["dependent_credit"], 0)
-        # extra withholding annualized
-        fed_annual += extra_withholding * periods
-        # FICA
-        ss_annual = min(gross_annual, 168600) * 0.062
-        medicare_annual = gross_annual * 0.0145
-        total_tax = fed_annual + ss_annual + medicare_annual
-        net_annual = gross_annual - total_tax
+    if is_annual:
+        # Annual path
+        adj    = gross_annual + other_inc - STD_DEDUCTION[filing_status] - deducs
+        taxable= max(adj,0)
+        fed_ann = annual_pct_tax(filing_status, taxable)
+        fed_ann = max(fed_ann - dependents*DEPENDENT_CREDIT, 0)
+        fed_ann += extra_wd * periods
+
+        ss_ann = min(gross_annual,168600)*0.062
+        med_ann= gross_annual *0.0145
+        total  = fed_ann + ss_ann + med_ann
+        net    = gross_annual - total
 
         st.subheader("Annual Estimate")
-        st.write(f"Federal Tax:        ${fed_annual:,.2f}")
-        st.write(f"Social Security:    ${ss_annual:,.2f}")
-        st.write(f"Medicare:           ${medicare_annual:,.2f}")
-        st.write(f"=== Net Pay:        ${net_annual:,.2f}")
+        st.write(f"Federal Withholding: ${fed_ann:,.2f}")
+        st.write(f"Social Security:     ${ss_ann:,.2f}")
+        st.write(f"Medicare:            ${med_ann:,.2f}")
+        st.write(f"Net Pay:             ${net:,.2f}")
 
     else:
-        # single paycheck
-        per_sd = TAX_CONFIG["standard_deduction"][filing_status] / periods
-        per_other = other_income / periods
-        per_ded = deductions / periods
-        per_credit = dependents_amount * TAX_CONFIG["dependent_credit"] / periods
+        # Single‑paycheck path
+        # Prorate dependents & other annual items to per pay period
+        dep_per = dependents*DEPENDENT_CREDIT/periods
+        other_per= other_inc/periods
+        ded_per  = deducs/periods
 
-        taxable = gross_pay + per_other - per_sd - per_ded
-        taxable = max(taxable, 0)
-        fed = compute_percent_method(taxable)
-        fed = max(fed - per_credit, 0)
-        fed += extra_withholding
+        taxable_pp = gross_pay + other_per - ded_per
+        taxable_pp = max(taxable_pp,0)
+        fed_pp     = lookup_periodic_withholding(filing_status,pay_freq,taxable_pp)
+        fed_pp     = max(fed_pp - dep_per,0)
+        fed_pp    += extra_wd
 
-        ss = min(gross_pay * periods, 168600) * 0.062 / periods
-        medicare = gross_pay * 0.0145
+        ss_pp  = min(gross_pay*periods,168600)*0.062/periods
+        med_pp = gross_pay*0.0145
 
-        total_tax = fed + ss + medicare
-        net = gross_pay - total_tax
+        total_pp= fed_pp + ss_pp + med_pp
+        net_pp  = gross_pay - total_pp
 
         st.subheader("Single‑Paycheck Estimate")
-        st.write(f"Federal Tax:        ${fed:,.2f}")
-        st.write(f"Social Security:    ${ss:,.2f}")
-        st.write(f"Medicare:           ${medicare:,.2f}")
-        st.write(f"=== Net Pay:        ${net:,.2f}")
+        st.write(f"Federal Withholding: ${fed_pp:,.2f}")
+        st.write(f"Social Security:     ${ss_pp:,.2f}")
+        st.write(f"Medicare:            ${med_pp:,.2f}")
+        st.write(f"Net Pay:             ${net_pp:,.2f}")
