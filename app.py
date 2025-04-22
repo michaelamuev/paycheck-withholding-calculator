@@ -18,7 +18,6 @@ st.caption("Built with Python • Powered by IRS Pub 15-T")
 # --- Load IRS Wage Bracket CSV ---
 @st.cache_data
 def load_wage_data():
-    return pd.read_csv("def load_wage_data():
     return pd.read_csv("2024_federal_wage_bracket_master.csv")
 
 wage_df = load_wage_data()
