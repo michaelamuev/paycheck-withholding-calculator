@@ -1,63 +1,62 @@
 import streamlit as st
 
 # === CONSTANTS FROM 2024 PUB 15‑T ===
-
-# Standard deduction by status
 STANDARD_DEDUCTION = {
-    "single": 14_600,
-    "married": 29_200,
-    "head": 21_900,
+    "single": 14600,
+    "married": 29200,
+    "head": 21900,
 }
-
-# Child & dependent credit (Step 3)
-DEPENDENT_CREDIT = 2_000
+DEPENDENT_CREDIT = 2000
 
 # FICA caps & rates
-FICA_CAP      = 168_600
+FICA_CAP      = 168600
 SOCIAL_RATE   = 0.062
 MEDICARE_RATE = 0.0145
 
-# Annual percentage‑method brackets (STANDARD tables)
-# Each list comes from the 2024 Pub 15‑T sec. 1 STANDARD Withholding Rate Schedules
+# Multiple jobs adjustment (Step 2)
+MULTI_JOB_ADJUST = {
+    "single": 8600,
+    "married": 12900,
+    "head": 8600,
+}
+
+# Annual percentage‑method brackets for automated payroll (Standard tables)
 BRACKETS = {
     "single": [
-        {"min":     0, "rate": 0.10, "base":      0},
-        {"min":  16_300, "rate": 0.12, "base":   1_630},
-        {"min":  39_500, "rate": 0.22, "base":   4_320},
-        {"min": 110_600, "rate": 0.24, "base":  10_696},
-        {"min": 217_350, "rate": 0.32, "base":  34_337},
-        {"min": 400_200, "rate": 0.35, "base":  78_221},
-        {"min": 503_750, "rate": 0.37, "base": 111_357},
+        {"min":     0, "base":      0, "rate": 0.10},
+        {"min":  16300, "base":   1630, "rate": 0.12},
+        {"min":  39500, "base":   4320, "rate": 0.22},
+        {"min": 110600, "base":  10696, "rate": 0.24},
+        {"min": 217350, "base":  34337, "rate": 0.32},
+        {"min": 400200, "base":  78221, "rate": 0.35},
+        {"min": 503750, "base": 111357, "rate": 0.37},
     ],
     "married": [
-        {"min":     0, "rate": 0.10, "base":      0},
-        {"min":  26_200, "rate": 0.12, "base":   2_620},
-        {"min":  61_750, "rate": 0.22, "base":   8_110},
-        {"min": 115_125, "rate": 0.24, "base":  25_326},
-        {"min": 206_550, "rate": 0.32, "base":  62_244},
-        {"min": 258_325, "rate": 0.35, "base": 105_664},
-        {"min": 380_200, "rate": 0.37, "base": 155_682},
+        {"min":     0, "base":      0, "rate": 0.10},
+        {"min":  26200, "base":   2620, "rate": 0.12},
+        {"min":  61750, "base":   8110, "rate": 0.22},
+        {"min": 115125, "base":  25326, "rate": 0.24},
+        {"min": 206550, "base":  62244, "rate": 0.32},
+        {"min": 258325, "base": 105664, "rate": 0.35},
+        {"min": 380200, "base": 155682, "rate": 0.37},
     ],
     "head": [
-        {"min":     0, "rate": 0.10, "base":      0},
-        {"min":  19_225, "rate": 0.12, "base":   1_922.5},
-        {"min":  42_500, "rate": 0.22, "base":   5_197.5},
-        {"min":  61_200, "rate": 0.24, "base":  11_017.5},
-        {"min": 106_925, "rate": 0.32, "base":  25_501.5},
-        {"min": 132_800, "rate": 0.35, "base":  46_266.5},
-        {"min": 315_625, "rate": 0.37, "base":  93_157.5},
+        {"min":     0, "base":      0, "rate": 0.10},
+        {"min":  19225, "base":   1922.5, "rate": 0.12},
+        {"min":  42500, "base":   5197.5, "rate": 0.22},
+        {"min":  61200, "base":  11017.5, "rate": 0.24},
+        {"min": 106925, "base":  25501.5, "rate": 0.32},
+        {"min": 132800, "base":  46266.5, "rate": 0.35},
+        {"min": 315625, "base":  93157.5, "rate": 0.37},
     ],
 }
 
-# Pay‑frequency → periods per year
-PERIODS = {
+# Pay‑frequency → periods per year\ nPERIODS = {
     "weekly":      52,
     "biweekly":    26,
     "semimonthly": 24,
     "monthly":     12,
 }
-
-# === UTILS ===
 
 def find_bracket(status, taxable):
     """Return the correct marginal bracket dict for a given annual taxable income."""
@@ -72,100 +71,80 @@ def annual_pct_tax(status, taxable):
     return br["base"] + (taxable - br["min"]) * br["rate"]
 
 # === STREAMLIT UI ===
-
 st.set_page_config(
-    page_title="Mike’s Pub 15‑T Withholding",
+    page_title="Pub 15‑T Withholding – Accurate Federal Tax Calculator",
     page_icon="💸",
     layout="wide",
 )
-st.title("Mike’s Federal Withholding Calculator")
-st.caption("Using 2024 Pub 15‑T Percentage Method Tables")
+st.title("Accurate Federal Withholding Calculator (2024 Pub 15‑T)")
+st.caption("Using Percentage Method Tables for Automated Payroll Systems")
 
-# Sidebar inputs
 with st.sidebar:
-    mode = st.radio("Mode", ["Single Paycheck", "Full Year"])
+    st.header("Inputs")
+    mode = st.radio("Mode", ["Single Paycheck", "Full Year"], index=0)
     annual = (mode == "Full Year")
-
     if annual:
-        income_type = st.radio("Income type", ["Salary", "Hourly"])
-        if income_type == "Salary":
-            gross_annual = st.number_input("Annual salary ($)", 0.0, 1_000_000.0, 50_000.0)
-        else:
-            rate = st.number_input("Hourly rate ($)", 0.0, 1_000.0, 20.0)
-            hrs  = st.number_input("Hours per week", 0.0, 168.0, 40.0)
-            gross_annual = rate * hrs * 52
+        gross_annual = st.number_input("Gross annual amount ($)", min_value=0.0, value=50000.0, step=100.0)
     else:
-        gross_pay = st.number_input("Gross pay this period ($)", 0.0, 50_000.0, 1_000.0)
+        gross_pay = st.number_input("Gross pay this period ($)", min_value=0.0, value=1000.0, step=10.0)
 
-    st.markdown("### W‑4 / Deductions")
-    multiple_jobs = st.checkbox("Step 2: Multiple jobs?")
-    dependents   = st.number_input("Dependents (Step 3)", 0.0, 10.0, 0.0)
-    other_inc    = st.number_input("Other income (Step 4a)", 0.0, 50_000.0, 0.0)
-    deducts      = st.number_input("Deductions (Step 4b)", 0.0, 50_000.0, 0.0)
-    extra_wh     = st.number_input("Extra withholding (Step 4c)", 0.0, 5_000.0, 0.0)
+    st.markdown("### W‑4 Information")
+    multiple_jobs = st.checkbox("Multiple jobs? (Step 2 checkbox)")
+    dependents   = st.number_input("Dependents (Step 3)", min_value=0, max_value=20, value=0, step=1)
+    other_inc    = st.number_input("Other income (Step 4a) – Annual", min_value=0.0, value=0.0, step=100.0)
+    deducts      = st.number_input("Deductions (Step 4b) – Annual", min_value=0.0, value=0.0, step=100.0)
+    extra_wh     = st.number_input("Extra withholding per period (Step 4c)", min_value=0.0, value=0.0, step=10.0)
 
     st.markdown("### Filing & Frequency")
-    status    = st.selectbox("Filing status", ["single", "married", "head"])
-    freq      = st.selectbox("Pay frequency", list(PERIODS.keys()))
-    periods   = PERIODS[freq]
+    status = st.selectbox("Filing status", options=["single", "married", "head"])
+    freq   = st.selectbox("Pay frequency", options=list(PERIODS.keys()))
+    periods = PERIODS[freq]
 
 if st.button("Calculate"):
-    # --- Annual path ---
     if annual:
-        # Adjusted annual taxable income
-        taxable = gross_annual + other_inc \
-                  - STANDARD_DEDUCTION[status] \
-                  - deducts
-        taxable = max(taxable, 0)
+        # Adjusted taxable annual income
+        adj_taxable = gross_annual + other_inc - STANDARD_DEDUCTION[status] - deducts
+        if not multiple_jobs:
+            adj_taxable -= MULTI_JOB_ADJUST[status]
+        adj_taxable = max(adj_taxable, 0.0)
 
-        # Base federal using annual percentage method
-        fed_ann = annual_pct_tax(status, taxable)
-
-        # Subtract Step 3 credits
-        fed_ann = max(fed_ann - dependents * DEPENDENT_CREDIT, 0)
-
-        # Add extra withholding annualized
+        # Federal tax annual
+        fed_ann = annual_pct_tax(status, adj_taxable)
+        fed_ann = max(fed_ann - dependents * DEPENDENT_CREDIT, 0.0)
         fed_ann += extra_wh * periods
 
         # FICA
-        ss  = min(gross_annual, FICA_CAP) * SOCIAL_RATE
-        mi  = gross_annual * MEDICARE_RATE
+        ss = min(gross_annual, FICA_CAP) * SOCIAL_RATE
+        mi = gross_annual * MEDICARE_RATE
         total_tax = fed_ann + ss + mi
         net = gross_annual - total_tax
 
         st.subheader("Annual Estimate")
-        st.write(f"Federal Tax:        ${fed_ann:,.2f}")
-        st.write(f"Social Security:    ${ss:,.2f}")
-        st.write(f"Medicare:           ${mi:,.2f}")
-        st.write(f"=== Net Pay:        ${net:,.2f}")
+        st.write(f"Federal Tax:       ${fed_ann:,.2f}")
+        st.write(f"Social Security:   ${ss:,.2f}")
+        st.write(f"Medicare:          ${mi:,.2f}")
+        st.write(f"Net Take-Home Pay: ${net:,.2f}")
 
-    # --- Single‑paycheck path ---
     else:
-        # Scale Step 4(a)/(4b) per period
-        per_other = other_inc / periods
-        per_ded   = deducts / periods
-        per_sd    = STANDARD_DEDUCTION[status] / periods
-        per_cred  = dependents * DEPENDENT_CREDIT / periods
+        # Annual equivalent taxable income
+        annual_equiv = gross_pay * periods + other_inc - STANDARD_DEDUCTION[status] - deducts
+        if not multiple_jobs:
+            annual_equiv -= MULTI_JOB_ADJUST[status]
+        annual_equiv = max(annual_equiv, 0.0)
 
-        # Adjusted annual equivalent taxable
-        annual_equiv = (gross_pay + per_other - per_sd - per_ded) * periods
-        annual_equiv = max(annual_equiv, 0)
-
-        # Compute annual federal, then divide
         fed_ann = annual_pct_tax(status, annual_equiv)
-        fed_ann = max(fed_ann - dependents * DEPENDENT_CREDIT, 0)
+        fed_ann = max(fed_ann - dependents * DEPENDENT_CREDIT, 0.0)
         fed_ann += extra_wh * periods
         fed_per = fed_ann / periods
 
-        # FICA per period
-        ss  = min(gross_pay * periods, FICA_CAP) * SOCIAL_RATE / periods
-        mi  = gross_pay * MEDICARE_RATE
-
+        ss = min(gross_pay * periods, FICA_CAP) * SOCIAL_RATE / periods
+        mi = gross_pay * MEDICARE_RATE
         total = fed_per + ss + mi
         net_pay = gross_pay - total
 
-        st.subheader("Single‑Paycheck Estimate")
-        st.write(f"Federal Tax:        ${fed_per:,.2f}")
-        st.write(f"Social Security:    ${ss:,.2f}")
-        st.write(f"Medicare:           ${mi:,.2f}")
-        st.write(f"=== Net Pay:        ${net_pay:,.2f}")
+        st.subheader("Single-Paycheck Estimate")
+        st.write(f"Federal Tax:       ${fed_per:,.2f}")
+        st.write(f"Social Security:   ${ss:,.2f}")
+        st.write(f"Medicare:          ${mi:,.2f}")
+        st.write(f"Net Pay:           ${net_pay:,.2f}")
+
