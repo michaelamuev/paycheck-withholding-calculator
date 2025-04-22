@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 # --- Header ---
-st.title("Mike's Paycheck Withholding Tool")
+st.title("Withholding Tool")
 st.caption("Built with Python • Powered by IRS Percentage Method")
 
 # --- Input: Calculation Mode ---
