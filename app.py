@@ -296,5 +296,5 @@ if st.button("Calculate"):
     cols[2].metric("Medicare", f"${mi}")
     cols[3].metric("Net Pay", f"${net}")
 
-    eff = (fed / gross)  (Decimal('1') if annual else PERIODS[period])
+    eff = (fed / gross) * (Decimal('1') if annual else PERIODS[period])
     st.caption(f"Effective Federal Rate: {eff.quantize(Decimal('0.0001')):.2%}")
