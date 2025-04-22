@@ -19,14 +19,14 @@ if calc_mode == "Estimate for full year":
 
 # --- Inputs ---
 if calc_mode == "Estimate for single paycheck":
-    gross_pay = st.number_input("Gross Pay This Period ($)", min_value=0.0, value=1000.0)
+    gross_pay = st.number_input("Gross Pay This Period ($)", min_value=0.0, value=0)
 else:
     if income_type == "Salary":
-        gross_pay = st.number_input("Annual Salary ($)", min_value=0.0, value=65000.0)
+        gross_pay = st.number_input("Annual Salary ($)", min_value=0.0, value=0)
     else:
         hourly_rate = st.number_input("Hourly Rate ($)", min_value=0.0, value=20.0)
         weekly_hours = st.number_input("Average Hours Worked Per Week", min_value=0.0, value=40.0)
-        weeks_per_year = st.number_input("Weeks Worked Per Year", min_value=0.0, value=50.0)
+        weeks_per_year = st.number_input("Weeks Worked Per Year", min_value=0.0, value=0)
         gross_pay = hourly_rate * weekly_hours * weeks_per_year
 
 pay_frequency = st.selectbox("Pay Frequency", ["weekly", "biweekly", "semimonthly", "monthly"])
@@ -97,6 +97,8 @@ def calculate():
         taxable_income = max(taxable_income, 0)
 
         fed_annual = percentage_method(filing_status, taxable_income)
+        st.write(f"DEBUG: taxable_income={taxable_income}, fed_annual={fed_annual}, gross_pay={gross_pay}, periods_per_year={periods_per_year}")
+
         fed_withholding = fed_annual / periods_per_year if calc_mode == "Estimate for single paycheck" else fed_annual
 
         fed_withholding += extra_withholding if calc_mode == "Estimate for single paycheck" else extra_withholding * periods_per_year
