@@ -22,11 +22,11 @@ if calc_mode == "Estimate for single paycheck":
     gross_pay = st.number_input("Gross Pay This Period ($)", min_value=0.0, value=0.0)
 else:
     if income_type == "Salary":
-        gross_pay = st.number_input("Annual Salary ($)", min_value=0.0, value=0)
+        gross_pay = st.number_input("Annual Salary ($)", min_value=0.0, value=0.0)
     else:
         hourly_rate = st.number_input("Hourly Rate ($)", min_value=0.0, value=20.0)
         weekly_hours = st.number_input("Average Hours Worked Per Week", min_value=0.0, value=40.0)
-        weeks_per_year = st.number_input("Weeks Worked Per Year", min_value=0.0, value=0)
+        weeks_per_year = st.number_input("Weeks Worked Per Year", min_value=0.0, value=0.0)
         gross_pay = hourly_rate * weekly_hours * weeks_per_year
 
 pay_frequency = st.selectbox("Pay Frequency", ["weekly", "biweekly", "semimonthly", "monthly"])
