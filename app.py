@@ -1,151 +1,149 @@
 import streamlit as st
+from decimal import Decimal, getcontext, ROUND_HALF_UP
 
-# === CONSTANTS FROM 2024 PUB 15-T ===
+# Set Decimal precision
+getcontext().prec = 28
+
+# === CONSTANTS ===
 STANDARD_DEDUCTION = {
-    "single": 14600,
-    "married": 29200,
-    "head": 21900,
+    "single": Decimal('14600'),
+    "married": Decimal('29200'),
+    "head": Decimal('21900'),
 }
-DEPENDENT_CREDIT = 2000
+DEPENDENT_CREDIT = Decimal('2000')
 
 # FICA caps & rates
-FICA_CAP      = 168600
-SOCIAL_RATE   = 0.062
-MEDICARE_RATE = 0.0145
+FICA_CAP = Decimal('168600')
+SOCIAL_RATE = Decimal('0.062')
+MEDICARE_RATE = Decimal('0.0145')
 
 # Multiple jobs adjustment (Step 2)
 MULTI_JOB_ADJUST = {
-    "single": 8600,
-    "married": 12900,
-    "head": 8600,
+    "single": Decimal('8600'),
+    "married": Decimal('12900'),
+    "head": Decimal('8600'),
 }
 
-# Annual percentage-method brackets (Standard tables)
+# Percentage-method brackets
 BRACKETS = {
     "single": [
-        {"min": 0,     "base":    0,     "rate": 0.10},
-        {"min": 16300, "base": 1630,     "rate": 0.12},
-        {"min": 39500, "base": 4320,     "rate": 0.22},
-        {"min": 110600,"base":10696,     "rate": 0.24},
-        {"min": 217350,"base":34337,     "rate": 0.32},
-        {"min": 400200,"base":78221,     "rate": 0.35},
-        {"min": 503750,"base":111357,    "rate": 0.37},
+        {"min": Decimal('0'),      "base": Decimal('0'),      "rate": Decimal('0.10')},
+        {"min": Decimal('16300'),  "base": Decimal('1630'),   "rate": Decimal('0.12')},
+        {"min": Decimal('39500'),  "base": Decimal('4320'),   "rate": Decimal('0.22')},
+        {"min": Decimal('110600'), "base": Decimal('10696'),  "rate": Decimal('0.24')},
+        {"min": Decimal('217350'), "base": Decimal('34337'),  "rate": Decimal('0.32')},
+        {"min": Decimal('400200'), "base": Decimal('78221'),  "rate": Decimal('0.35')},
+        {"min": Decimal('503750'), "base": Decimal('111357'), "rate": Decimal('0.37')},
     ],
     "married": [
-        {"min": 0,     "base":    0,     "rate": 0.10},
-        {"min": 26200, "base": 2620,     "rate": 0.12},
-        {"min": 61750, "base": 8110,     "rate": 0.22},
-        {"min": 115125,"base":25326,     "rate": 0.24},
-        {"min": 206550,"base":62244,     "rate": 0.32},
-        {"min": 258325,"base":105664,    "rate": 0.35},
-        {"min": 380200,"base":155682,    "rate": 0.37},
+        {"min": Decimal('0'),      "base": Decimal('0'),      "rate": Decimal('0.10')},
+        {"min": Decimal('26200'),  "base": Decimal('2620'),   "rate": Decimal('0.12')},
+        {"min": Decimal('61750'),  "base": Decimal('8110'),   "rate": Decimal('0.22')},
+        {"min": Decimal('115125'), "base": Decimal('25326'),  "rate": Decimal('0.24')},
+        {"min": Decimal('206550'), "base": Decimal('62244'),  "rate": Decimal('0.32')},
+        {"min": Decimal('258325'), "base": Decimal('105664'), "rate": Decimal('0.35')},
+        {"min": Decimal('380200'), "base": Decimal('155682'), "rate": Decimal('0.37')},
     ],
     "head": [
-        {"min": 0,     "base":    0,     "rate": 0.10},
-        {"min": 19225, "base": 1922.5,   "rate": 0.12},
-        {"min": 42500, "base": 5197.5,   "rate": 0.22},
-        {"min": 61200, "base":11017.5,   "rate": 0.24},
-        {"min": 106925,"base":25501.5,   "rate": 0.32},
-        {"min": 132800,"base":46266.5,   "rate": 0.35},
-        {"min": 315625,"base":93157.5,   "rate": 0.37},
+        {"min": Decimal('0'),      "base": Decimal('0'),      "rate": Decimal('0.10')},
+        {"min": Decimal('19225'),  "base": Decimal('1922.5'), "rate": Decimal('0.12')},
+        {"min": Decimal('42500'),  "base": Decimal('5197.5'), "rate": Decimal('0.22')},
+        {"min": Decimal('61200'),  "base": Decimal('11017.5'),"rate": Decimal('0.24')},
+        {"min": Decimal('106925'), "base": Decimal('25501.5'),"rate": Decimal('0.32')},
+        {"min": Decimal('132800'), "base": Decimal('46266.5'),"rate": Decimal('0.35')},
+        {"min": Decimal('315625'), "base": Decimal('93157.5'),"rate": Decimal('0.37')},
     ],
 }
 
-# Pay-frequency → periods per year
+# Periods per year
 PERIODS = {
-    "weekly":      52,
-    "biweekly":    26,
-    "semimonthly": 24,
-    "monthly":     12,
+    "weekly": Decimal('52'),
+    "biweekly": Decimal('26'),
+    "semimonthly": Decimal('24'),
+    "monthly": Decimal('12'),
 }
 
 # UTILS
-def find_bracket(status, taxable):
-    """Return the correct marginal bracket for a given annual taxable income."""
+def find_bracket(status: str, taxable: Decimal) -> dict:
     for b in reversed(BRACKETS[status]):
         if taxable >= b["min"]:
             return b
     return BRACKETS[status][0]
 
-def annual_pct_tax(status, taxable):
-    """Annual federal tax via percentage method."""
+
+def annual_pct_tax(status: str, taxable: Decimal) -> Decimal:
     br = find_bracket(status, taxable)
     return br["base"] + (taxable - br["min"]) * br["rate"]
 
+@st.cache_data
+def calculate_taxes(
+    gross: Decimal,
+    status: str,
+    multiple_jobs: bool,
+    dependents: int,
+    other_inc: Decimal,
+    deducts: Decimal,
+    extra_wh: Decimal,
+    periods: Decimal,
+    annual: bool,
+) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    base = gross if annual else gross * periods
+    taxable = base + other_inc - STANDARD_DEDUCTION[status] - deducts
+    if not multiple_jobs:
+        taxable -= MULTI_JOB_ADJUST[status]
+    taxable = max(taxable, Decimal('0'))
+
+    fed_annual = annual_pct_tax(status, taxable)
+    fed_annual = max(fed_annual - DEPENDENT_CREDIT * dependents, Decimal('0'))
+    fed_annual += extra_wh * periods
+
+    fed = fed_annual if annual else fed_annual / periods
+
+    ss_annual = min(base, FICA_CAP) * SOCIAL_RATE
+    mi_annual = base * MEDICARE_RATE
+    ss = ss_annual if annual else ss_annual / periods
+    mi = mi_annual if annual else mi_annual / periods
+
+    net = gross - fed - ss - mi
+
+    def quantize(val: Decimal) -> Decimal:
+        return val.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    return quantize(fed), quantize(ss), quantize(mi), quantize(net)
+
 # STREAMLIT UI
-st.set_page_config(
-    page_title="Accurate Federal Withholding Calculator",
-    page_icon="💸",
-    layout="wide",
-)
-st.title("Accurate Federal Withholding Calculator (2024 Pub 15-T)")
-st.caption("Using Percentage Method Tables for Automated Payroll)
+st.set_page_config(page_title="Precision Withholding", page_icon="💸", layout="wide")
+st.title("Precision Withholding Calculator (2024 Pub 15‑T)")
 
 with st.sidebar:
-    st.header("Inputs")
     mode = st.radio("Mode", ["Single Paycheck", "Full Year"])
+    status = st.selectbox("Filing Status", ["single", "married", "head"])
     annual = (mode == "Full Year")
-    if annual:
-        gross_annual = st.number_input("Gross annual amount ($)", 0.0, 1_000_000.0, 50000.0)
-    else:
-        gross_pay = st.number_input("Gross pay this period ($)", 0.0, 100000.0, 1000.0)
 
-    st.markdown("### W-4 Information")
-    multiple_jobs = st.checkbox("Multiple jobs? (Step 2 checkbox)")
-    dependents   = st.number_input("Dependents (Step 3)", 0, 20, 0)
-    other_inc    = st.number_input("Other income (annual, Step 4a)", 0.0, 100000.0, 0.0)
-    deducts      = st.number_input("Deductions (annual, Step 4b)", 0.0, 100000.0, 0.0)
-    extra_wh     = st.number_input("Extra withholding per period (Step 4c)", 0.0, 10000.0, 0.0)
-
-    st.markdown("### Filing & Frequency")
-    status = st.selectbox("Filing status", ["single", "married", "head"])
-    freq   = st.selectbox("Pay frequency", list(PERIODS.keys()))
+    gross_val = st.number_input("Gross Amount ($)", value=1000.0 if not annual else 50000.0)
+    gross = Decimal(str(gross_val))
+    freq = st.selectbox("Frequency", list(PERIODS.keys()))
     periods = PERIODS[freq]
 
+    st.markdown("---")
+    multiple_jobs = st.checkbox("Multiple jobs? (Step 2)")
+    dependents = st.number_input("Dependents (Step 3)", min_value=0, value=0)
+    other_income = Decimal(str(st.number_input("Other income (annual)", value=0.0)))
+    deductions = Decimal(str(st.number_input("Deductions (annual)", value=0.0)))
+    extra_withholding = Decimal(str(st.number_input("Extra withholding per period", value=0.0)))
+
 if st.button("Calculate"):
-    if annual:
-        # Adjusted annual taxable
-        adj_taxable = gross_annual + other_inc - STANDARD_DEDUCTION[status] - deducts
-        if not multiple_jobs:
-            adj_taxable -= MULTI_JOB_ADJUST[status]
-        adj_taxable = max(adj_taxable, 0.0)
+    fed, ss, mi, net = calculate_taxes(
+        gross, status, multiple_jobs, dependents,
+        other_income, deductions, extra_withholding,
+        periods, annual
+    )
 
-        # Federal annual
-        fed_ann = annual_pct_tax(status, adj_taxable)
-        fed_ann = max(fed_ann - dependents * DEPENDENT_CREDIT, 0.0)
-        fed_ann += extra_wh * periods
+    cols = st.columns(4)
+    cols[0].metric("Federal Tax", f"${fed}")
+    cols[1].metric("Social Security", f"${ss}")
+    cols[2].metric("Medicare", f"${mi}")
+    cols[3].metric("Net Pay", f"${net}")
 
-        # FICA/Medicare
-        ss = min(gross_annual, FICA_CAP) * SOCIAL_RATE
-        mi = gross_annual * MEDICARE_RATE
-        total_tax = fed_ann + ss + mi
-        net = gross_annual - total_tax
-
-        st.subheader("Annual Estimate")
-        st.write(f"Federal Tax:       ${fed_ann:,.2f}")
-        st.write(f"Social Security:   ${ss:,.2f}")
-        st.write(f"Medicare:          ${mi:,.2f}")
-        st.write(f"Net Take-Home:     ${net:,.2f}")
-
-    else:
-        # Equivalent annual
-        annual_equiv = gross_pay * periods + other_inc - STANDARD_DEDUCTION[status] - deducts
-        if not multiple_jobs:
-            annual_equiv -= MULTI_JOB_ADJUST[status]
-        annual_equiv = max(annual_equiv, 0.0)
-
-        fed_ann = annual_pct_tax(status, annual_equiv)
-        fed_ann = max(fed_ann - dependents * DEPENDENT_CREDIT, 0.0)
-        fed_ann += extra_wh * periods
-        fed_per = fed_ann / periods
-
-        ss = min(gross_pay * periods, FICA_CAP) * SOCIAL_RATE / periods
-        mi = gross_pay * MEDICARE_RATE
-        total = fed_per + ss + mi
-        net_pay = gross_pay - total
-
-        st.subheader("Single-Paycheck Estimate")
-        st.write(f"Federal Tax:       ${fed_per:,.2f}")
-        st.write(f"Social Security:   ${ss:,.2f}")
-        st.write(f"Medicare:          ${mi:,.2f}")
-        st.write(f"Net Pay:           ${net_pay:,.2f}")
+    eff = (fed / gross) * (Decimal('1') if annual else periods)
+    st.caption(f"Effective Federal Rate: {eff.quantize(Decimal('0.0001')):.2%}")
