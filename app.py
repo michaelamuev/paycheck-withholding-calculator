@@ -352,7 +352,3 @@ if calc_ny:
     st.write(f"**New York State Income Tax:** ${ny_withholding:,.2f}")
     total_tax = fed_withholding + ny_withholding
     st.write(f"**Total Tax Withholding:** ${total_tax:,.2f}")
-
-        eff = (fed / gross) * (Decimal('1') if annual else PERIODS[period])
-        st.caption(f"Effective Federal Rate: {eff.quantize(Decimal('0.0001')):.2%}")
-
