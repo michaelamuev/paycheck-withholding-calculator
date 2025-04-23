@@ -18,8 +18,10 @@ st.set_page_config(
     page_icon="💸",
     layout="wide"
 )
- tip = random.choice(IRS_TRIVIA)
-    st.info(f"💡 **Tip of the Day:** {tip}")
+tip = random.choice(IRS_TRIVIA)
+st.info(f"💡 **Tip of the Day:** {tip}")
+
+
 # ─── Precision ─────────────────────────────────────────────────────────────────
 getcontext().prec = 28
 
