@@ -1,4 +1,6 @@
 import random
+import streamlit as st
+from decimal import Decimal, getcontext, ROUND_HALF_UP
 
 IRS_TRIVIA = [
     "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
@@ -9,12 +11,6 @@ IRS_TRIVIA = [
     "IRS trivia: Form W-4P is for pensions and annuities, not your regular paycheck — don’t mix them up!",
 ]
 
-
-
-
-
-import streamlit as st
-from decimal import Decimal, getcontext, ROUND_HALF_UP
 
 # ─── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
