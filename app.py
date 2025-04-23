@@ -1,20 +1,26 @@
 import streamlit as st
 from decimal import Decimal, getcontext, ROUND_HALF_UP
 
+# ─── Page Config ───────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="2024 Withholding (Pub 15-T)",
+    page_icon="💸",
+    layout="wide"
+)
+
+# ─── Precision ─────────────────────────────────────────────────────────────────
 getcontext().prec = 28
 
-# === CONSTANTS ===
+# ─── CONSTANTS ─────────────────────────────────────────────────────────────────
 STANDARD_DEDUCTION = {
     "single": Decimal("14600"),
     "married": Decimal("29200"),
     "head": Decimal("21900"),
 }
-
 DEPENDENT_CREDIT = Decimal("2000")
 FICA_CAP        = Decimal("168600")
 SOCIAL_RATE     = Decimal("0.062")
 MEDICARE_RATE   = Decimal("0.0145")
-
 PERIODS = {
     "weekly":      Decimal("52"),
     "biweekly":    Decimal("26"),
@@ -22,9 +28,7 @@ PERIODS = {
     "monthly":     Decimal("12"),
 }
 
-# === IRS PERCENTAGE‐METHOD TABLES (from Pub 15-T §1) ===
-from decimal import Decimal
-
+# ─── PERCENTAGE-METHOD TABLES (Pub 15-T §1) ─────────────────────────────────────
 PERCENTAGE_METHOD_TABLES = {
     "weekly": {
         "single": [
@@ -58,7 +62,6 @@ PERCENTAGE_METHOD_TABLES = {
             {"min": Decimal("10225"),"base": Decimal("2950.56"),"rate": Decimal("0.37")},
         ],
     },
-
     "biweekly": {
         "single": [
             {"min": Decimal("0"),    "base": Decimal("0"),     "rate": Decimal("0.10")},
@@ -91,7 +94,6 @@ PERCENTAGE_METHOD_TABLES = {
             {"min": Decimal("20450"),"base": Decimal("5901.12"),"rate": Decimal("0.37")},
         ],
     },
-
     "semimonthly": {
         "single": [
             {"min": Decimal("0"),    "base": Decimal("0"),     "rate": Decimal("0.10")},
@@ -124,7 +126,6 @@ PERCENTAGE_METHOD_TABLES = {
             {"min": Decimal("22215"),"base": Decimal("6472.84"),"rate": Decimal("0.37")},
         ],
     },
-
     "monthly": {
         "single": [
             {"min": Decimal("0"),    "base": Decimal("0"),      "rate": Decimal("0.10")},
@@ -159,8 +160,7 @@ PERCENTAGE_METHOD_TABLES = {
     },
 }
 
-
-# IRS_1040 annual brackets (for Full Year mode)
+# ─── ANNUAL IRS 1040 BRACKETS (Pub 1040) ────────────────────────────────────────
 IRS_1040_BRACKETS = {
     "single": [
         {"min": Decimal("0"),      "base": Decimal("0"),      "rate": Decimal("0.10")},
@@ -191,77 +191,60 @@ IRS_1040_BRACKETS = {
     ],
 }
 
-# === HELPERS ===
-
-def find_bracket(tables, status, amount):
-    rows = tables[status]
-    for b in reversed(rows):
-        if amount >= b["min"]:
-            return b
-    return rows[0]
+# ─── HELPERS ───────────────────────────────────────────────────────────────────
+def find_bracket(table, status, amt):
+    for row in reversed(table[status]):
+        if amt >= row["min"]:
+            return row
+    return table[status][0]
 
 def calculate_periodic_pct_tax(status, taxable, period):
-    table = PERCENTAGE_METHOD_TABLES[period][status]
-    br = find_bracket(table, status, taxable)
-    return br["base"] + (taxable - br["min"]) * br["rate"]
+    row = find_bracket(PERCENTAGE_METHOD_TABLES, status, taxable) \
+          if False else find_bracket(PERCENTAGE_METHOD_TABLES[period], status, taxable)
+    return row["base"] + (taxable - row["min"]) * row["rate"]
 
 def calculate_annual_pct_tax(status, taxable):
-    br = find_bracket(IRS_1040_BRACKETS[status], status, taxable)
-    return br["base"] + (taxable - br["min"]) * br["rate"]
+    row = find_bracket(IRS_1040_BRACKETS, status, taxable)
+    return row["base"] + (taxable - row["min"]) * row["rate"]
 
 @st.cache_data
 def calculate_fed(
-    gross: Decimal, status: str, multiple_jobs: bool, dependents: int,
-    other_inc: Decimal, deducts: Decimal, extra_wh: Decimal,
+    gross: Decimal, status: str, multi: bool, deps: int,
+    oth: Decimal, ded: Decimal, extra: Decimal,
     period: str, annual: bool
 ) -> Decimal:
+    p = PERIODS[period]
+    base = gross if annual else gross * p
+    if multi:
+        base += {"single":Decimal("8600"),
+                 "married":Decimal("12900"),
+                 "head":Decimal("8600")}[status]
 
-    periods = PERIODS[period]
-    base = gross if annual else gross * periods
-    if multiple_jobs:
-        # Add the statutory multiple-job adjustment
-        adjust = {"single":Decimal("8600"), "married":Decimal("12900"), "head":Decimal("8600")}
-        base += adjust[status]
-
-    taxable = base + other_inc - STANDARD_DEDUCTION[status] - deducts
-    taxable = max(taxable, Decimal("0"))
-
+    taxable = max(base + oth - STANDARD_DEDUCTION[status] - ded, Decimal("0"))
     if annual:
         fed_ann = calculate_annual_pct_tax(status, taxable)
     else:
-        # convert to per-period taxable
-        fed_ann = calculate_periodic_pct_tax(status, taxable/periods, period) * periods
+        fed_ann = calculate_periodic_pct_tax(status, taxable/p, period) * p
 
-    # subtract dependent credit
-    dep_cr = DEPENDENT_CREDIT * dependents
-    dep_cr = dep_cr if annual else dep_cr/periods
-    fed_ann = max(fed_ann - dep_cr, Decimal("0"))
-
-    fed_ann += extra_wh * (1 if annual else periods)
-    fed = fed_ann if annual else fed_ann/periods
-
-    return fed.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    credit = Decimal("2000") * deps
+    credit = credit if annual else credit / p
+    fed_ann = max(fed_ann - credit, Decimal("0")) + extra * (1 if annual else p)
+    fed = fed_ann if annual else fed_ann / p
+    return fed.quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 def calculate_ss(gross: Decimal, period: str, annual: bool) -> Decimal:
     p = PERIODS[period]
     base = gross if annual else gross * p
     ss_ann = min(base, FICA_CAP) * SOCIAL_RATE
-    return (ss_ann if annual else ss_ann/p).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    return (ss_ann if annual else ss_ann / p).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 def calculate_mi(gross: Decimal, period: str, annual: bool) -> Decimal:
     p = PERIODS[period]
     base = gross if annual else gross * p
     mi_ann = base * MEDICARE_RATE
-    return (mi_ann if annual else mi_ann/p).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    return (mi_ann if annual else mi_ann / p).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
-def calculate_ny_withholding(
-    annual_salary: float,
-    pay_periods: int,
-    calc_ny: bool,
-    ny_status: str,
-    ny_allow: int,
-    ny_extra: float
-) -> float:
+def calculate_ny_withholding(annual_salary, pay_periods, calc_ny, ny_status, ny_allow, ny_extra):
     if not calc_ny:
         return 0.0
     taxable = max(annual_salary - ny_allow * 1000.0, 0.0)
@@ -278,60 +261,67 @@ def calculate_ny_withholding(
             (323200,2155350,0.0965,20797),(2155350,5000000,0.103,183010),(5000000,float('inf'),0.109,447441)
         ]
     tax = 0.0
-    for low,high,rate,base_amt in ny_brackets:
+    for low, high, rate, base_amt in ny_brackets:
         if low <= taxable <= high:
             tax = base_amt + rate * (taxable - low)
             break
-    per_pay = tax / pay_periods + ny_extra
-    return round(per_pay,2)
+    return round(tax / pay_periods + ny_extra, 2)
 
-# === STREAMLIT UI ===
-st.set_page_config(page_title="Paycheck Calculator", layout="wide")
+# ─── SIDEBAR UI ────────────────────────────────────────────────────────────────
 st.sidebar.title("Inputs")
-
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
-annual = (mode=="Full Year")
+annual = mode == "Full Year"
 
 if annual:
-    gross_val = st.sidebar.number_input("Annual Gross Salary ($)", 60000.0, step=1000.0)
+    gross_val = st.sidebar.number_input("Annual Gross Salary ($)", value=60000.0, step=1000.0)
 else:
-    gross_val = st.sidebar.number_input("Gross Amount per Paycheck ($)", 1000.0, step=50.0)
+    gross_val = st.sidebar.number_input("Gross Amount per Paycheck ($)", value=1000.0, step=50.0)
 
 period = st.sidebar.selectbox("Pay Frequency", ["weekly","biweekly","semimonthly","monthly"])
-w4_type = st.sidebar.radio("Form W-4 Version", ["2020 or Later","2019 or Earlier"])
-filing = st.sidebar.selectbox("Filing Status", ["single","married","head"])
-step2  = st.sidebar.checkbox("Step 2: Multiple jobs / spouse works")
-dependents = st.sidebar.number_input("Step 3: Dependents", min_value=0)
-other_inc   = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", 0.0, step=100.0)))
-deducts     = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", 0.0, step=100.0)))
-extra_wh    = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding/period ($)", 0.0, step=5.0)))
+multi  = st.sidebar.checkbox("Step 2: Multiple jobs / spouse works")
+deps   = st.sidebar.number_input("Step 3: Dependents", min_value=0, value=0)
+oth    = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", value=0.0, step=100.0)))
+ded    = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", value=0.0, step=100.0)))
+extra  = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", value=0.0, step=5.0)))
 
-calc_ny  = st.sidebar.checkbox("Calculate NY State withholding?")
+# Filing status must match lowercase keys:
+filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
+
+calc_ny = st.sidebar.checkbox("Calculate NY State withholding?")
 if calc_ny:
     ny_status = st.sidebar.selectbox("NY Filing Status", ["Single","Married"])
-    ny_allow  = st.sidebar.number_input("NY allowances", min_value=0)
-    ny_extra  = st.sidebar.number_input("NY extra withholding/period ($)", 0.0, step=5.0)
+    ny_allow  = st.sidebar.number_input("NY allowances", min_value=0, value=0)
+    ny_extra  = st.sidebar.number_input("NY extra withholding per period ($)", value=0.0, step=5.0)
 else:
     ny_status, ny_allow, ny_extra = None, 0, 0.0
 
+# ─── MAIN AREA ────────────────────────────────────────────────────────────────
+st.title("2024 Paycheck Tax Withholding Calculator")
+st.markdown("This uses IRS Publication 15-T percentage and annual 1040 tables for federal withholding, plus optional NY state withholding.")
+
 if st.sidebar.button("Calculate"):
     gross = Decimal(str(gross_val))
-    fed = calculate_fed(gross, filing, step2, dependents, other_inc, deducts, extra_wh, period, annual)
+    fed = calculate_fed(gross, filing, multi, deps, oth, ded, extra, period, annual)
     ss  = calculate_ss(gross, period, annual)
     mi  = calculate_mi(gross, period, annual)
-    net = (gross if not annual else gross/PERIODS[period]) - fed - ss - mi if not annual else gross - fed - ss - mi
+    if annual:
+        net = gross - fed - ss - mi
+        per_pay = gross / PERIODS[period]
+    else:
+        per_pay = gross
+        net = per_pay - fed - ss - mi
 
-    c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Federal Tax",      f"${fed:,.2f}")
-    c2.metric("Social Security",  f"${ss:,.2f}")
-    c3.metric("Medicare",         f"${mi:,.2f}")
-    c4.metric("Net Pay",          f"${net:,.2f}")
+    cols = st.columns(4)
+    cols[0].metric("Federal Tax",     f"${fed:,.2f}")
+    cols[1].metric("Social Security", f"${ss:,.2f}")
+    cols[2].metric("Medicare",        f"${mi:,.2f}")
+    cols[3].metric("Net Pay",         f"${net:,.2f}")
 
-    eff = (fed / (gross if not annual else gross/PERIODS[period]))
-    st.caption(f"Effective Federal Rate: {eff:.2%}")
+    rate = (fed / (gross if not annual else per_pay))
+    st.caption(f"Effective Federal Rate: {rate:.2%}")
 
     if calc_ny:
-        annual_sal = float(gross if annual else gross*PERIODS[period])
+        annual_sal = float(gross if annual else gross * PERIODS[period])
         pp = int(PERIODS[period])
         ny_tax = calculate_ny_withholding(annual_sal, pp, True, ny_status, int(ny_allow), float(ny_extra))
         st.write(f"**NY State Tax:** ${ny_tax:,.2f}")
