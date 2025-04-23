@@ -300,6 +300,10 @@ st.title("2024 Paycheck Tax Withholding Calculator")
 st.markdown("This uses IRS Publication 15-T percentage and annual 1040 tables for federal withholding, plus optional NY state withholding.")
 
 if st.sidebar.button("Calculate"):
+    if gross_val > 250_000:
+        st.error("who we lying to 👀")
+        st.stop()
+    # now the real work begins
     gross = Decimal(str(gross_val))
     fed = calculate_fed(gross, filing, multi, deps, oth, ded, extra, period, annual)
     ss  = calculate_ss(gross, period, annual)
