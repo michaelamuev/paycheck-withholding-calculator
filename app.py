@@ -356,3 +356,16 @@ with st.expander("💬 Have feedback or suggestions?"):
                 who = name.strip() or "Anonymous"
                 f.write(f"{who}: {feedback.replace(chr(10), ' ')}\n---\n")
 
+# ─── Admin: View All Feedback ─────────────────────────────────────────────────
+if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
+    try:
+        with open("user_feedback.log", "r") as f:
+            log = f.read().strip()
+        if log:
+            st.text_area("User Feedback Log", log, height=300)
+        else:
+            st.info("No feedback yet.")
+    except FileNotFoundError:
+        st.warning("No feedback log found.")
+
+
