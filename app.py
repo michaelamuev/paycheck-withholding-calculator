@@ -329,3 +329,30 @@ if st.sidebar.button("Calculate"):
         pp = int(PERIODS[period])
         ny_tax = calculate_ny_withholding(annual_sal, pp, True, ny_status, int(ny_allow), float(ny_extra))
         st.write(f"**NY State Tax:** ${ny_tax:,.2f}")
+
+
+# … after you display results …
+
+# ─── Feedback Section ─────────────────────────────────────────────────────────
+with st.expander("💬 Have feedback or suggestions?"):
+    name = st.text_input(
+        "Your name (optional)",
+        placeholder="If you’d like to be credited…"
+    )
+    feedback = st.text_area(
+        "Leave any comments, tweaks, or general feedback here:",
+        placeholder="Type away…",
+        height=100,
+    )
+    if st.button("Submit Feedback"):
+        if not feedback.strip():
+            st.warning("Oops—you didn’t write anything!")
+        else:
+            # Acknowledge
+            st.success("Thanks for your feedback! 🙏")
+            st.balloons()
+            # Save to your server for review
+            with open("user_feedback.log", "a") as f:
+                who = name.strip() or "Anonymous"
+                f.write(f"{who}: {feedback.replace(chr(10), ' ')}\n---\n")
+
