@@ -1,7 +1,6 @@
 import random
 import streamlit as st
 from decimal import Decimal, getcontext, ROUND_HALF_UP
-import pandas as pd
 
 IRS_TRIVIA = [
     "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
@@ -353,55 +352,6 @@ if st.sidebar.button("Calculate"):
         )
         st.write(f"**NY State Tax:** ${ny_tax:,.2f}")
 
-    # ─── What-If Scenario Comparison ──────────────────────
-    st.subheader("🔍 What-If Scenario Comparison")
-    scenario_cols = st.columns(3)
-    scenarios = []
-
-    for i, col in enumerate(scenario_cols, start=1):
-        with col:
-            st.markdown(f"**Scenario {i}**")
-            gross_i = st.number_input(
-                f"Gross ($) #{i}",
-                value=float(gross_val),
-                key=f"sc_gross_{i}"
-            )
-            extra_i = Decimal(str(st.number_input(
-                f"Extra W/H ($) #{i}",
-                value=float(extra_wh),
-                key=f"sc_extra_{i}"
-            )))
-            step2_i = st.checkbox(
-                f"Multi-job? #{i}",
-                value=step2,
-                key=f"sc_step2_{i}"
-            )
-
-            fed_i = calculate_fed(
-                Decimal(str(gross_i)),
-                filing, step2_i, dependents,
-                other_inc, deducts, extra_i,
-                period, annual
-            )
-            ss_i = calculate_ss(Decimal(str(gross_i)), period, annual)
-            mi_i = calculate_mi(Decimal(str(gross_i)), period, annual)
-
-            if not annual:
-                net_i = Decimal(str(gross_i)) - fed_i - ss_i - mi_i
-            else:
-                net_i = (Decimal(str(gross_i)) / PERIODS[period]) - fed_i - ss_i - mi_i
-
-            scenarios.append({
-                "Scenario":      str(i),
-                "Gross/Period":  f"${gross_i:,.2f}",
-                "Fed Tax":       f"${fed_i:,.2f}",
-                "SS Tax":        f"${ss_i:,.2f}",
-                "Medicare":      f"${mi_i:,.2f}",
-                "Net Pay":       f"${net_i:,.2f}",
-            })
-
-    df = pd.DataFrame(scenarios).set_index("Scenario")
-    st.dataframe(df, use_container_width=True)
 
 
 
