@@ -31,7 +31,7 @@ WEEKLY_TABLE = [
     (Decimal("0"),    Decimal("145"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("0")),
     (Decimal("145"),  Decimal("155"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("1")),
     (Decimal("155"),  Decimal("165"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("0"),   Decimal("2")),
-    …  # [include all intermediate rows from Pub 15-T section 1]
+ # [include all intermediate rows from Pub 15-T section 1]
     (Decimal("1690"), Decimal("Infinity"), Decimal("485.27"), Decimal("485.27"), Decimal("242.64"), Decimal("242.64"), Decimal("242.64"), Decimal("242.64")),
 ]
 BIWEEKLY_TABLE = [
