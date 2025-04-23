@@ -2,9 +2,12 @@ import streamlit as st
 
 # Title and description
 st.title("2024 Paycheck Tax Withholding Calculator")
-st.markdown("This calculator uses the 2024 IRS **Wage Bracket Method** tables for federal tax withholding&#8203;:contentReference[oaicite:21]{index=21}. "
-            "It supports both new (2020+) W-4 forms and pre-2020 W-4 forms, including the multiple jobs checkbox and allowances. "
-            "Optionally, it estimates New York State withholding as well. Enter your details below:")
+st.write(
+    "This calculator uses the 2024 IRS **Wage Bracket Method** tables for federal withholding. "
+    "It supports both new (2020+) and pre-2020 W-4 forms, including the multiple jobs checkbox and allowances. "
+    "Optionally, it estimates New York State withholding as well. Enter your details below:"
+)
+
 
 # Input: Annual salary and pay frequency
 annual_salary = st.number_input("Annual Gross Salary ($)", min_value=0.0, value=60000.0, step=1000.0)
