@@ -8,7 +8,7 @@ IRS_TRIVIA = [
     "Fun fact: Publication 15-T was first introduced in 2005, but percentage-method tables go back much further!",
     "Remember: Your standard deduction (for 2024) is $14,600 if single, $29,200 if married filing jointly.",
     "Heads up: Any extra withholding you enter in Step 4(c) applies every pay period, so small amounts add up fast.",
-    "IRS trivia: Form W-4P is for pensions and annuities, not your regular paycheck — don’t mix them up!",
+    "IRS trivia: Form W-4P is for pensions and annuities, not your regular paycheck — don't mix them up!",
 ]
 
 
@@ -24,6 +24,7 @@ st.info(f"💡 **Tip of the Day:** {tip}")
 
 # ─── Precision ─────────────────────────────────────────────────────────────────
 getcontext().prec = 28
+getcontext().rounding = ROUND_HALF_UP
 
 # ─── CONSTANTS ─────────────────────────────────────────────────────────────────
 STANDARD_DEDUCTION = {
@@ -206,20 +207,37 @@ IRS_1040_BRACKETS = {
 }
 
 # ─── HELPERS ───────────────────────────────────────────────────────────────────
+def round_to_penny(amount: Decimal) -> Decimal:
+    """Round to nearest penny using IRS rounding rules."""
+    return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
 def find_bracket(table, status, amt):
+    """Find the appropriate tax bracket with improved precision."""
+    if amt < Decimal("0"):
+        raise ValueError("Taxable amount cannot be negative")
+        
     for row in reversed(table[status]):
         if amt >= row["min"]:
             return row
     return table[status][0]
 
 def calculate_periodic_pct_tax(status, taxable, period):
-    row = find_bracket(PERCENTAGE_METHOD_TABLES, status, taxable) \
-          if False else find_bracket(PERCENTAGE_METHOD_TABLES[period], status, taxable)
-    return row["base"] + (taxable - row["min"]) * row["rate"]
+    """Calculate periodic percentage tax with enhanced precision."""
+    if taxable < Decimal("0"):
+        raise ValueError("Taxable amount cannot be negative")
+        
+    row = find_bracket(PERCENTAGE_METHOD_TABLES[period], status, taxable)
+    tax = row["base"] + (taxable - row["min"]) * row["rate"]
+    return round_to_penny(tax)
 
 def calculate_annual_pct_tax(status, taxable):
+    """Calculate annual percentage tax with enhanced precision."""
+    if taxable < Decimal("0"):
+        raise ValueError("Taxable amount cannot be negative")
+        
     row = find_bracket(IRS_1040_BRACKETS, status, taxable)
-    return row["base"] + (taxable - row["min"]) * row["rate"]
+    tax = row["base"] + (taxable - row["min"]) * row["rate"]
+    return round_to_penny(tax)
 
 @st.cache_data
 def calculate_fed(
@@ -227,24 +245,59 @@ def calculate_fed(
     oth: Decimal, ded: Decimal, extra: Decimal,
     period: str, annual: bool
 ) -> Decimal:
-    p = PERIODS[period]
-    base = gross if annual else gross * p
-    if multi:
-        base += {"single":Decimal("8600"),
-                 "married":Decimal("12900"),
-                 "head":Decimal("8600")}[status]
+    """Calculate federal withholding with improved precision and error handling."""
+    try:
+        # Input validation
+        if gross < Decimal("0"):
+            raise ValueError("Gross pay cannot be negative")
+        if deps < 0:
+            raise ValueError("Number of dependents cannot be negative")
+        if oth < Decimal("0"):
+            raise ValueError("Other income cannot be negative")
+        if ded < Decimal("0"):
+            raise ValueError("Deductions cannot be negative")
+        if extra < Decimal("0"):
+            raise ValueError("Extra withholding cannot be negative")
+            
+        p = PERIODS[period]
+        base = gross if annual else gross * p
+        
+        # Handle multiple jobs adjustment
+        if multi:
+            multi_adjustment = {
+                "single": Decimal("8600"),
+                "married": Decimal("12900"),
+                "head": Decimal("8600")
+            }[status]
+            base += multi_adjustment
 
-    taxable = max(base + oth - STANDARD_DEDUCTION[status] - ded, Decimal("0"))
-    if annual:
-        fed_ann = calculate_annual_pct_tax(status, taxable)
-    else:
-        fed_ann = calculate_periodic_pct_tax(status, taxable/p, period) * p
+        # Calculate taxable income with precision
+        taxable = max(
+            base + oth - STANDARD_DEDUCTION[status] - ded,
+            Decimal("0")
+        )
 
-    credit = Decimal("2000") * deps
-    credit = credit if annual else credit / p
-    fed_ann = max(fed_ann - credit, Decimal("0")) + extra * (1 if annual else p)
-    fed = fed_ann if annual else fed_ann / p
-    return fed.quantize(Decimal("0.01"), ROUND_HALF_UP)
+        # Calculate federal tax
+        if annual:
+            fed_ann = calculate_annual_pct_tax(status, taxable)
+        else:
+            fed_ann = calculate_periodic_pct_tax(status, taxable/p, period) * p
+
+        # Apply dependent credit with precision
+        credit = DEPENDENT_CREDIT * Decimal(str(deps))
+        credit = credit if annual else credit / p
+        fed_ann = max(fed_ann - credit, Decimal("0"))
+        
+        # Add extra withholding
+        fed_ann += extra * (Decimal("1") if annual else p)
+        
+        # Calculate final amount
+        fed = fed_ann if annual else fed_ann / p
+        return round_to_penny(fed)
+        
+    except Exception as e:
+        st.error(f"Error calculating federal tax: {str(e)}")
+        return Decimal("0")
 
 def calculate_ss(gross: Decimal, period: str, annual: bool) -> Decimal:
     p = PERIODS[period]
@@ -335,9 +388,6 @@ if st.sidebar.button("Calculate"):
     cols[2].metric("Medicare",        f"${mi:,.2f}")
     cols[3].metric("Net Pay",         f"${net:,.2f}")
 
-    rate = (fed / (gross if not annual else per_pay))
-    st.caption(f"Effective Federal Rate: {rate:.2%}")
-
          # ─── NY STATE WITHHOLDING ───────────────────────────
     if calc_ny:
         annual_sal = float(gross if annual else gross * PERIODS[period])
@@ -351,49 +401,4 @@ if st.sidebar.button("Calculate"):
             float(ny_extra),
         )
         st.write(f"**NY State Tax:** ${ny_tax:,.2f}")
-
-
-
-
-
-
-
-
-# … after you display results …
-
-# ─── Feedback Section ─────────────────────────────────────────────────────────
-with st.expander("💬 Have feedback or suggestions?"):
-    name = st.text_input(
-        "Your name (optional)",
-        placeholder="If you’d like to be credited…"
-    )
-    feedback = st.text_area(
-        "Leave any comments, tweaks, or general feedback here:",
-        placeholder="Type away…",
-        height=100,
-    )
-    if st.button("Submit Feedback"):
-        if not feedback.strip():
-            st.warning("Oops—you didn’t write anything!")
-        else:
-            # Acknowledge
-            st.success("Thanks for your feedback! 🙏")
-            st.balloons()
-            # Save to your server for review
-            with open("user_feedback.log", "a") as f:
-                who = name.strip() or "Anonymous"
-                f.write(f"{who}: {feedback.replace(chr(10), ' ')}\n---\n")
-
-# ─── Admin: View All Feedback ─────────────────────────────────────────────────
-if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
-    try:
-        with open("user_feedback.log", "r") as f:
-            log = f.read().strip()
-        if log:
-            st.text_area("User Feedback Log", log, height=300)
-        else:
-            st.info("No feedback yet.")
-    except FileNotFoundError:
-        st.warning("No feedback log found.")
-
 
