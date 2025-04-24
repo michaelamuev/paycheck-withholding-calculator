@@ -226,8 +226,13 @@ def calculate_periodic_pct_tax(status, taxable, period):
     if taxable < Decimal("0"):
         raise ValueError("Taxable amount cannot be negative")
         
+    # Round the taxable amount first (IRS Pub 15-T requirement)
+    taxable = round_to_penny(taxable)
+    
     row = find_bracket(PERCENTAGE_METHOD_TABLES[period], status, taxable)
-    tax = row["base"] + (taxable - row["min"]) * row["rate"]
+    # Calculate tax using IRS method
+    excess = round_to_penny(taxable - row["min"])
+    tax = row["base"] + (excess * row["rate"])
     return round_to_penny(tax)
 
 def calculate_annual_pct_tax(status, taxable):
@@ -260,39 +265,47 @@ def calculate_fed(
             raise ValueError("Extra withholding cannot be negative")
             
         p = PERIODS[period]
-        base = gross if annual else gross * p
         
-        # Handle multiple jobs adjustment
+        # For periodic calculations, work with the periodic amount directly
+        if not annual:
+            base = gross
+            other_periodic = oth / p
+            ded_periodic = ded / p
+        else:
+            base = gross / p
+            other_periodic = oth / p
+            ded_periodic = ded / p
+            
+        # Handle multiple jobs adjustment (applied to periodic amount)
         if multi:
             multi_adjustment = {
                 "single": Decimal("8600"),
                 "married": Decimal("12900"),
                 "head": Decimal("8600")
             }[status]
-            base += multi_adjustment
-
-        # Calculate taxable income with precision
+            base += multi_adjustment / p
+            
+        # Calculate periodic taxable income
+        standard_ded_periodic = STANDARD_DEDUCTION[status] / p
         taxable = max(
-            base + oth - STANDARD_DEDUCTION[status] - ded,
+            base + other_periodic - standard_ded_periodic - ded_periodic,
             Decimal("0")
         )
-
-        # Calculate federal tax
-        if annual:
-            fed_ann = calculate_annual_pct_tax(status, taxable)
-        else:
-            fed_ann = calculate_periodic_pct_tax(status, taxable/p, period) * p
-
-        # Apply dependent credit with precision
-        credit = DEPENDENT_CREDIT * Decimal(str(deps))
-        credit = credit if annual else credit / p
-        fed_ann = max(fed_ann - credit, Decimal("0"))
+        
+        # Calculate periodic tax
+        fed = calculate_periodic_pct_tax(status, taxable, period)
+        
+        # Apply dependent credit (periodic)
+        credit = (DEPENDENT_CREDIT * Decimal(str(deps))) / p
+        fed = max(fed - credit, Decimal("0"))
         
         # Add extra withholding
-        fed_ann += extra * (Decimal("1") if annual else p)
+        fed += extra
         
-        # Calculate final amount
-        fed = fed_ann if annual else fed_ann / p
+        # Convert to annual if needed
+        if annual:
+            fed *= p
+            
         return round_to_penny(fed)
         
     except Exception as e:
@@ -401,4 +414,48 @@ if st.sidebar.button("Calculate"):
             float(ny_extra),
         )
         st.write(f"**NY State Tax:** ${ny_tax:,.2f}")
+
+
+
+
+
+
+
+
+# … after you display results …
+
+# ─── Feedback Section ─────────────────────────────────────────────────────────
+with st.expander("💬 Have feedback or suggestions?"):
+    name = st.text_input(
+        "Your name (optional)",
+        placeholder="If you'd like to be credited…"
+    )
+    feedback = st.text_area(
+        "Leave any comments, tweaks, or general feedback here:",
+        placeholder="Type away…",
+        height=100,
+    )
+    if st.button("Submit Feedback"):
+        if not feedback.strip():
+            st.warning("Oops—you didn't write anything!")
+        else:
+            # Acknowledge
+            st.success("Thanks for your feedback! 🙏")
+            st.balloons()
+            # Save to your server for review
+            with open("user_feedback.log", "a") as f:
+                who = name.strip() or "Anonymous"
+                f.write(f"{who}: {feedback.replace(chr(10), ' ')}\n---\n")
+
+# ─── Admin: View All Feedback ─────────────────────────────────────────────────
+if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
+    try:
+        with open("user_feedback.log", "r") as f:
+            log = f.read().strip()
+        if log:
+            st.text_area("User Feedback Log", log, height=300)
+        else:
+            st.info("No feedback yet.")
+    except FileNotFoundError:
+        st.warning("No feedback log found.")
 
