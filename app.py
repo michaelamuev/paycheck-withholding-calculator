@@ -42,6 +42,38 @@ PERIODS = {
     "monthly":     Decimal("12"),
 }
 
+# Multiple Jobs Tax Brackets (annual ranges)
+MULTIPLE_JOBS_RANGES = {
+    "single": [
+        {"range": (0, 14200), "adjustment": Decimal("0")},
+        {"range": (14200, 34000), "adjustment": Decimal("1020")},
+        {"range": (34000, 100000), "adjustment": Decimal("2040")},
+        {"range": (100000, 200000), "adjustment": Decimal("3060")},
+        {"range": (200000, float('inf')), "adjustment": Decimal("4080")}
+    ],
+    "married": [
+        {"range": (0, 17000), "adjustment": Decimal("0")},
+        {"range": (17000, 45000), "adjustment": Decimal("2040")},
+        {"range": (45000, 120000), "adjustment": Decimal("4080")},
+        {"range": (120000, 240000), "adjustment": Decimal("6120")},
+        {"range": (240000, float('inf')), "adjustment": Decimal("8160")}
+    ],
+    "head": [
+        {"range": (0, 14200), "adjustment": Decimal("0")},
+        {"range": (14200, 34000), "adjustment": Decimal("1020")},
+        {"range": (34000, 100000), "adjustment": Decimal("2040")},
+        {"range": (100000, 200000), "adjustment": Decimal("3060")},
+        {"range": (200000, float('inf')), "adjustment": Decimal("4080")}
+    ]
+}
+
+def get_multiple_jobs_adjustment(annual_income: Decimal, filing_status: str) -> Decimal:
+    """Calculate the multiple jobs adjustment based on IRS tables."""
+    for bracket in MULTIPLE_JOBS_RANGES[filing_status]:
+        if bracket["range"][0] <= float(annual_income) < bracket["range"][1]:
+            return bracket["adjustment"]
+    return Decimal("0")
+
 # ─── PERCENTAGE-METHOD TABLES (Pub 15-T §1) ─────────────────────────────────────
 PERCENTAGE_METHOD_TABLES = {
     "weekly": {
@@ -247,9 +279,9 @@ def calculate_annual_pct_tax(status, taxable):
 def calculate_fed(
     gross: Decimal, status: str, multi: bool, dep_credit: Decimal,
     oth: Decimal, ded: Decimal, extra: Decimal,
-    period: str, annual: bool
+    period: str, annual: bool, other_job_amount: Decimal = Decimal("0")
 ) -> Decimal:
-    """Calculate federal withholding with improved precision and error handling."""
+    """Calculate federal withholding with improved multiple jobs handling."""
     try:
         # Input validation
         if gross < Decimal("0"):
@@ -270,19 +302,26 @@ def calculate_fed(
             base = gross
             other_periodic = oth / p
             ded_periodic = ded / p
+            annual_gross = gross * p
         else:
             base = gross / p
             other_periodic = oth / p
             ded_periodic = ded / p
+            annual_gross = gross
             
-        # Handle multiple jobs adjustment (applied to periodic amount)
+        # Enhanced multiple jobs adjustment
         if multi:
-            multi_adjustment = {
-                "single": Decimal("8600"),
-                "married": Decimal("12900"),
-                "head": Decimal("8600")
-            }[status]
-            base += multi_adjustment / p
+            # Calculate adjustment based on annual income
+            if other_job_amount > Decimal("0"):
+                # For two jobs, use the higher paying job's adjustment
+                higher_income = max(annual_gross, other_job_amount)
+                adjustment = get_multiple_jobs_adjustment(higher_income, status)
+            else:
+                # For three or more jobs, use this job's adjustment
+                adjustment = get_multiple_jobs_adjustment(annual_gross, status)
+            
+            # Apply adjustment to periodic amount
+            base += adjustment / p
             
         # Calculate periodic taxable income
         standard_ded_periodic = STANDARD_DEDUCTION[status] / p
@@ -375,7 +414,44 @@ except ValueError:
     gross_val = 0
 
 period = st.sidebar.selectbox("Pay Frequency", ["weekly","biweekly","semimonthly","monthly"])
-multi  = st.sidebar.checkbox("Step 2: Multiple jobs / spouse works")
+
+# Enhanced Multiple Jobs Section
+st.sidebar.subheader("Step 2: Multiple Jobs / Spouse Works")
+multi = st.sidebar.checkbox("Check if any of these apply:")
+if multi:
+    st.sidebar.markdown("""
+        📋 **Multiple Jobs Worksheet**
+        - You have more than one job at the same time
+        - You're married filing jointly and your spouse also works
+    """)
+    
+    job_count = st.sidebar.radio(
+        "Select your situation:",
+        ["Two jobs total", "Three or more jobs total"]
+    )
+    
+    if job_count == "Two jobs total":
+        st.sidebar.markdown("For most accurate withholding with two jobs:")
+        other_job_input = st.sidebar.text_input(
+            "Annual salary of other job ($)",
+            value="0.00",
+            help="Enter the annual salary of the other job"
+        )
+        try:
+            other_job_amount = Decimal(other_job_input.replace(',', '').strip())
+            if other_job_amount < 0:
+                st.sidebar.error("Salary cannot be negative")
+                other_job_amount = Decimal("0")
+        except:
+            st.sidebar.error("Please enter a valid number")
+            other_job_amount = Decimal("0")
+            
+    else:  # Three or more jobs
+        st.sidebar.markdown("""
+            For three or more jobs:
+            - Higher withholding amounts will be applied
+            - Consider using the IRS Tax Withholding Estimator for more accuracy
+        """)
 
 # New dependent credit section
 st.sidebar.subheader("Step 3: Dependent Credits")
@@ -419,6 +495,14 @@ else:
 st.title("2024 Paycheck Tax Withholding Calculator")
 st.markdown("This uses IRS Publication 15-T percentage and annual 1040 tables for federal withholding, plus optional NY state withholding.")
 
+st.warning("""
+⚠️ **Disclaimer**: 
+- This calculator provides estimates based on IRS Publication 15-T procedures
+- Results are approximations and should not be used for official tax filing purposes
+- For accurate tax advice, please consult a qualified tax professional
+- Actual withholding may vary based on specific employer policies and circumstances
+""")
+
 if st.sidebar.button("Calculate"):
     if gross_val > 250_000:
         st.error("who we lying to 👀")
@@ -426,7 +510,8 @@ if st.sidebar.button("Calculate"):
     # now the real work begins
     gross = Decimal(str(gross_val))
     dep_credit_dec = Decimal(str(dep_credit))
-    fed = calculate_fed(gross, filing, multi, dep_credit_dec, oth, ded, extra, period, annual)
+    other_job = Decimal(str(other_job_amount)) if multi and job_count == "Two jobs total" else Decimal("0")
+    fed = calculate_fed(gross, filing, multi, dep_credit_dec, oth, ded, extra, period, annual, other_job)
     ss  = calculate_ss(gross, period, annual)
     mi  = calculate_mi(gross, period, annual)
     if annual:
@@ -499,6 +584,3 @@ if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
             st.info("No feedback yet.")
     except FileNotFoundError:
         st.warning("No feedback log found.")
-
-
-
