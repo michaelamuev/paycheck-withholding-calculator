@@ -353,21 +353,27 @@ mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
 if annual:
-    gross_val = st.sidebar.number_input(
+    gross_input = st.sidebar.text_input(
         "Annual Gross Salary ($)",
-        value=60000.0,
-        step=1000.0,
-        min_value=0.0,
-        help="Enter your annual gross salary"
+        value="60000.00",
+        help="Enter your annual gross salary (numbers only)"
     )
 else:
-    gross_val = st.sidebar.number_input(
+    gross_input = st.sidebar.text_input(
         "Gross Amount per Paycheck ($)",
-        value=1000.0,
-        step=50.0,
-        min_value=0.0,
-        help="Enter your gross pay per paycheck"
+        value="1000.00",
+        help="Enter your gross pay per paycheck (numbers only)"
     )
+
+# Convert input to float, with error handling
+try:
+    gross_val = float(gross_input.replace(',', '').strip())
+    if gross_val < 0:
+        st.sidebar.error("Gross amount cannot be negative")
+        gross_val = 0
+except ValueError:
+    st.sidebar.error("Please enter a valid number")
+    gross_val = 0
 
 period = st.sidebar.selectbox("Pay Frequency", ["weekly","biweekly","semimonthly","monthly"])
 multi  = st.sidebar.checkbox("Step 2: Multiple jobs / spouse works")
