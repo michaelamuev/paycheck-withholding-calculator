@@ -353,9 +353,21 @@ mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
 if annual:
-    gross_val = st.sidebar.number_input("Annual Gross Salary ($)", value=60000.0, step=1000.0)
+    gross_val = st.sidebar.number_input(
+        "Annual Gross Salary ($)",
+        value=60000.0,
+        step=1000.0,
+        min_value=0.0,
+        help="Enter your annual gross salary"
+    )
 else:
-    gross_val = st.sidebar.number_input("Gross Amount per Paycheck ($)", value=1000.0, step=50.0)
+    gross_val = st.sidebar.number_input(
+        "Gross Amount per Paycheck ($)",
+        value=1000.0,
+        step=50.0,
+        min_value=0.0,
+        help="Enter your gross pay per paycheck"
+    )
 
 period = st.sidebar.selectbox("Pay Frequency", ["weekly","biweekly","semimonthly","monthly"])
 multi  = st.sidebar.checkbox("Step 2: Multiple jobs / spouse works")
@@ -458,4 +470,5 @@ if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
             st.info("No feedback yet.")
     except FileNotFoundError:
         st.warning("No feedback log found.")
+
 
