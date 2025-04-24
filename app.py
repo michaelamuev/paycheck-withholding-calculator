@@ -32,7 +32,6 @@ STANDARD_DEDUCTION = {
     "married": Decimal("29200"),
     "head": Decimal("21900"),
 }
-DEPENDENT_CREDIT = Decimal("2000")
 FICA_CAP        = Decimal("168600")
 SOCIAL_RATE     = Decimal("0.062")
 MEDICARE_RATE   = Decimal("0.0145")
@@ -246,7 +245,7 @@ def calculate_annual_pct_tax(status, taxable):
 
 @st.cache_data
 def calculate_fed(
-    gross: Decimal, status: str, multi: bool, deps: int,
+    gross: Decimal, status: str, multi: bool, dep_credit: Decimal,
     oth: Decimal, ded: Decimal, extra: Decimal,
     period: str, annual: bool
 ) -> Decimal:
@@ -255,8 +254,8 @@ def calculate_fed(
         # Input validation
         if gross < Decimal("0"):
             raise ValueError("Gross pay cannot be negative")
-        if deps < 0:
-            raise ValueError("Number of dependents cannot be negative")
+        if dep_credit < Decimal("0"):
+            raise ValueError("Dependent credits cannot be negative")
         if oth < Decimal("0"):
             raise ValueError("Other income cannot be negative")
         if ded < Decimal("0"):
@@ -296,8 +295,8 @@ def calculate_fed(
         fed = calculate_periodic_pct_tax(status, taxable, period)
         
         # Apply dependent credit (periodic)
-        credit = (DEPENDENT_CREDIT * Decimal(str(deps))) / p
-        fed = max(fed - credit, Decimal("0"))
+        credit_periodic = dep_credit / p
+        fed = max(fed - credit_periodic, Decimal("0"))
         
         # Add extra withholding
         fed += extra
@@ -377,7 +376,30 @@ except ValueError:
 
 period = st.sidebar.selectbox("Pay Frequency", ["weekly","biweekly","semimonthly","monthly"])
 multi  = st.sidebar.checkbox("Step 2: Multiple jobs / spouse works")
-deps   = st.sidebar.number_input("Step 3: Dependents", min_value=0, value=0)
+
+# New dependent credit section
+st.sidebar.subheader("Step 3: Dependent Credits")
+st.sidebar.markdown("""
+    Enter total dependent credits:
+    - $2,000 per qualifying child under 17
+    - $1,500 per dependent 17 and older
+""")
+dep_credit_input = st.sidebar.text_input(
+    "Total Dependent Credits ($)",
+    value="0.00",
+    help="Enter total dependent credits (sum of $2,000 per qualifying child under 17 and $1,500 per dependent 17 and older)"
+)
+
+# Convert dependent credit input to float
+try:
+    dep_credit = float(dep_credit_input.replace(',', '').strip())
+    if dep_credit < 0:
+        st.sidebar.error("Dependent credits cannot be negative")
+        dep_credit = 0
+except ValueError:
+    st.sidebar.error("Please enter a valid number for dependent credits")
+    dep_credit = 0
+
 oth    = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", value=0.0, step=100.0)))
 ded    = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", value=0.0, step=100.0)))
 extra  = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", value=0.0, step=5.0)))
@@ -403,7 +425,8 @@ if st.sidebar.button("Calculate"):
         st.stop()
     # now the real work begins
     gross = Decimal(str(gross_val))
-    fed = calculate_fed(gross, filing, multi, deps, oth, ded, extra, period, annual)
+    dep_credit_dec = Decimal(str(dep_credit))
+    fed = calculate_fed(gross, filing, multi, dep_credit_dec, oth, ded, extra, period, annual)
     ss  = calculate_ss(gross, period, annual)
     mi  = calculate_mi(gross, period, annual)
     if annual:
@@ -476,5 +499,6 @@ if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
             st.info("No feedback yet.")
     except FileNotFoundError:
         st.warning("No feedback log found.")
+
 
 
