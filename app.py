@@ -1066,6 +1066,13 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
         - ➡️ Move Right
         
         Click 'Start New Game' to begin!
+        
+        *Note: If the game doesn't load properly, try refreshing the page.*
     """)
-    from snake_game import snake_game
-    snake_game()
+    try:
+        from snake_game import snake_game
+        snake_game()
+    except Exception as e:
+        st.error("Unable to load the snake game. Please refresh the page.")
+        st.warning(f"Error details: {str(e)}")
+
