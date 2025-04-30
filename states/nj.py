@@ -59,6 +59,10 @@ class NJTaxCalculator(StateTaxCalculator):
     def available_filing_statuses(self) -> list[str]:
         return ["Single", "Married", "Head", "Separate", "Widow"]
         
+    def get_local_jurisdictions(self) -> list[str]:
+        """Return list of local tax jurisdictions for NJ."""
+        return []  # NJ has no local income taxes
+        
     def calculate(
         self,
         income: Decimal,
