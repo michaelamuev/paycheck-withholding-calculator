@@ -19,8 +19,8 @@ class OHTaxCalculator(StateTaxCalculator):
         "Single": [
             {"min": Decimal("26050"), "max": Decimal("46100"), "rate": Decimal("0.0275"), "base": Decimal("0")},
             {"min": Decimal("46100"), "max": Decimal("92150"), "rate": Decimal("0.0324"), "base": Decimal("551.38")},
-            {"min": Decimal("92150"), "max": Decimal("115300"), "rate": Decimal("0.0373"), "base": Decimal("2,045.21")},
-            {"min": Decimal("115300"), "max": None, "rate": Decimal("0.0399"), "base": Decimal("2,907.88")}
+            {"min": Decimal("92150"), "max": Decimal("115300"), "rate": Decimal("0.0373"), "base": Decimal("2045.21")},
+            {"min": Decimal("115300"), "max": None, "rate": Decimal("0.0399"), "base": Decimal("2907.88")}
         ]
     }
     
