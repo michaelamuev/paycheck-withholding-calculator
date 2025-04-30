@@ -526,7 +526,6 @@ if st.sidebar.button("Calculate"):
         # Calculate state taxes using the modular calculator
         result = calculator.calculate(
             income=annual_income,
-            filing_status=state_inputs.get("filing_status", "Single"),
             pay_period=period,
             is_annual=annual,
             **state_inputs
