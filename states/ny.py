@@ -119,15 +119,8 @@ class NYTaxCalculator(StateTaxCalculator):
         num_dependents = kwargs.get("num_dependents", 0)
         part_year_resident = kwargs.get("part_year_resident", False)
         
-        # Convert to annual if needed
-        periods = {
-            "weekly": Decimal("52"),
-            "biweekly": Decimal("26"),
-            "semimonthly": Decimal("24"),
-            "monthly": Decimal("12")
-        }
-        period_count = periods[pay_period]
-        annual_income = income if is_annual else income * period_count
+        # Income is already annualized by app.py
+        annual_income = income
         
         # Calculate deductions
         standard_ded = self.STANDARD_DEDUCTION[filing_status]
@@ -170,10 +163,17 @@ class NYTaxCalculator(StateTaxCalculator):
         
         # Convert to per-period if needed
         if not is_annual:
+            periods = {
+                "weekly": Decimal("52"),
+                "biweekly": Decimal("26"),
+                "semimonthly": Decimal("24"),
+                "monthly": Decimal("12")
+            }
+            period_count = periods[pay_period]
             state_tax = state_tax / period_count
             local_taxes = {k: v / period_count for k, v in local_taxes.items()}
             
-        # Calculate effective rate
+        # Calculate effective rate (using annual amounts)
         total_tax = state_tax + sum(local_taxes.values())
         effective_rate = total_tax / annual_income if annual_income > 0 else Decimal("0")
         
