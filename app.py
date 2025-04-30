@@ -1,35 +1,35 @@
 import random
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 from decimal import Decimal, getcontext, ROUND_HALF_UP
+import numpy as np
 import pandas as pd
 
 IRS_TRIVIA = [
-    "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
+    "Did you know? The new 2024 W-4 no longer uses withholding allowances â€” you enter dollar amounts instead.",
     "Tip: If you have more than one job, checking Step 2 can prevent underwithholding later in the year.",
     "Fun fact: Publication 15-T was first introduced in 2005, but percentage-method tables go back much further!",
     "Remember: Your standard deduction (for 2024) is $14,600 if single, $29,200 if married filing jointly.",
     "Heads up: Any extra withholding you enter in Step 4(c) applies every pay period, so small amounts add up fast.",
-    "IRS trivia: Form W-4P is for pensions and annuities, not your regular paycheck — don't mix them up!",
+    "IRS trivia: Form W-4P is for pensions and annuities, not your regular paycheck â€” don't mix them up!",
 ]
 
 
-# ─── Page Config ───────────────────────────────────────────────────────────────
+# â”€â”€â”€ Page Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 st.set_page_config(
     page_title="2024 Withholding (Pub 15-T)",
-    page_icon="💸",
+    page_icon="ðŸ’¸",
     layout="wide"
 )
 tip = random.choice(IRS_TRIVIA)
-st.info(f"💡 **Tip of the Day:** {tip}")
+st.info(f"ðŸ’¡ **Tip of the Day:** {tip}")
 
 
-# ─── Precision ─────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Precision â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 getcontext().prec = 28
 getcontext().rounding = ROUND_HALF_UP
 
-# ─── CONSTANTS ─────────────────────────────────────────────────────────────────
+# â”€â”€â”€ CONSTANTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 STANDARD_DEDUCTION = {
     "single": Decimal("14600"),
     "married": Decimal("29200"),
@@ -77,7 +77,7 @@ def get_multiple_jobs_adjustment(annual_income: Decimal, filing_status: str) -> 
             return bracket["adjustment"]
     return Decimal("0")
 
-# ─── PERCENTAGE-METHOD TABLES (Pub 15-T §1) ─────────────────────────────────────
+# â”€â”€â”€ PERCENTAGE-METHOD TABLES (Pub 15-T Â§1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 PERCENTAGE_METHOD_TABLES = {
     "weekly": {
         "single": [
@@ -209,7 +209,7 @@ PERCENTAGE_METHOD_TABLES = {
     },
 }
 
-# ─── ANNUAL IRS 1040 BRACKETS (Pub 1040) ────────────────────────────────────────
+# â”€â”€â”€ ANNUAL IRS 1040 BRACKETS (Pub 1040) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 IRS_1040_BRACKETS = {
     "single": [
         {"min": Decimal("0"),      "base": Decimal("0"),      "rate": Decimal("0.10")},
@@ -240,7 +240,7 @@ IRS_1040_BRACKETS = {
     ],
 }
 
-# ─── HELPERS ───────────────────────────────────────────────────────────────────
+# â”€â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def round_to_penny(amount: Decimal) -> Decimal:
     """Round to nearest penny using IRS rounding rules."""
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -600,7 +600,7 @@ def calculate_ny_withholding(
         st.error(f"Error calculating NY taxes: {str(e)}")
         return Decimal("0"), Decimal("0"), Decimal("0")
 
-# ─── SIDEBAR UI ────────────────────────────────────────────────────────────────
+# â”€â”€â”€ SIDEBAR UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 st.sidebar.title("Inputs")
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
@@ -635,7 +635,7 @@ st.sidebar.subheader("Step 2: Multiple Jobs / Spouse Works")
 multi = st.sidebar.checkbox("Check if any of these apply:")
 if multi:
     st.sidebar.markdown("""
-        📋 **Multiple Jobs Worksheet**
+        ðŸ“‹ **Multiple Jobs Worksheet**
         - You have more than one job at the same time
         - You're married filing jointly and your spouse also works
     """)
@@ -705,7 +705,7 @@ calc_ny = st.sidebar.checkbox("Calculate NY State withholding?")
 
 if calc_ny:
     # Add expandable information section
-    with st.sidebar.expander("ℹ️ NY Tax Information", expanded=False):
+    with st.sidebar.expander("â„¹ï¸ NY Tax Information", expanded=False):
         st.markdown("""
             **2024 NY Tax Updates:**
             - Standard deductions have been adjusted for inflation
@@ -738,11 +738,11 @@ if calc_ny:
     
     # Add warning for married status mismatch
     if filing == "married" and ny_status not in ["Married", "Separate"]:
-        st.sidebar.warning("⚠️ Your federal and NY filing statuses don't match. This may affect accuracy.")
+        st.sidebar.warning("âš ï¸ Your federal and NY filing statuses don't match. This may affect accuracy.")
     elif filing == "single" and ny_status != "Single":
-        st.sidebar.warning("⚠️ Your federal and NY filing statuses don't match. This may affect accuracy.")
+        st.sidebar.warning("âš ï¸ Your federal and NY filing statuses don't match. This may affect accuracy.")
     elif filing == "head" and ny_status != "Head":
-        st.sidebar.warning("⚠️ Your federal and NY filing statuses don't match. This may affect accuracy.")
+        st.sidebar.warning("âš ï¸ Your federal and NY filing statuses don't match. This may affect accuracy.")
     
     # Residency Status
     st.sidebar.subheader("Residency Status")
@@ -823,7 +823,7 @@ if calc_ny:
     # Allowances and Extra Withholding
     st.sidebar.subheader("Withholding Adjustments")
     st.sidebar.warning("""
-        ⚠️ **Important:** NY is transitioning away from allowances.
+        âš ï¸ **Important:** NY is transitioning away from allowances.
         This calculator will be updated when new guidance is available.
     """)
     
@@ -861,18 +861,18 @@ if calc_ny:
         )
     
     if is_nyc_resident and is_yonkers_resident:
-        st.sidebar.error("❗ You cannot be both a NYC and Yonkers resident.")
+        st.sidebar.error("â— You cannot be both a NYC and Yonkers resident.")
         is_yonkers_resident = False
     
     if is_nyc_resident:
         st.sidebar.info(f"""
-            🏙️ **NYC Tax Rate:** {float(NYC_TAX_RATES[ny_status])*100:.3f}%
+            ðŸ™ï¸ **NYC Tax Rate:** {float(NYC_TAX_RATES[ny_status])*100:.3f}%
             Applied to your NY taxable income
         """)
     
     if is_yonkers_resident:
         st.sidebar.info(f"""
-            🏘️ **Yonkers Tax Rate:** {float(YONKERS_TAX_RATE)*100:.3f}%
+            ðŸ˜ï¸ **Yonkers Tax Rate:** {float(YONKERS_TAX_RATE)*100:.3f}%
             Applied to your NY state tax amount
         """)
 else:
@@ -887,12 +887,12 @@ else:
     qualifying_children = 0
     supplemental_amount = Decimal("0")
 
-# ─── MAIN AREA ────────────────────────────────────────────────────────────────
+# â”€â”€â”€ MAIN AREA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 st.title("2024 Paycheck Tax Withholding Calculator")
 st.markdown("This uses IRS Publication 15-T percentage and annual 1040 tables for federal withholding, plus optional NY state withholding.")
 
 st.warning("""
-⚠️ **Disclaimer**: 
+âš ï¸ **Disclaimer**: 
 - This calculator provides estimates based on IRS Publication 15-T procedures
 - Results are approximations and should not be used for official tax filing purposes
 - For accurate tax advice, please consult a qualified tax professional
@@ -901,7 +901,7 @@ st.warning("""
 
 if st.sidebar.button("Calculate"):
     if gross_val > 250_000:
-        st.error("who we lying to 👀")
+        st.error("who we lying to ðŸ‘€")
         st.stop()
     # now the real work begins
     gross = Decimal(str(gross_val))
@@ -923,40 +923,28 @@ if st.sidebar.button("Calculate"):
     cols[2].metric("Medicare",        f"${mi:,.2f}")
     cols[3].metric("Net Pay",         f"${net:,.2f}")
 
-    # ─── Visualizations ────────────────────────────────────────────────────────────
-    st.markdown("### 📊 Interactive Tax Visualizations")
+    # â”€â”€â”€ Visualizations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    st.markdown("### ðŸ“Š Interactive Tax Visualizations")
     
     # Create tabs for different visualizations
     viz_tabs = st.tabs(["Breakdown", "Comparison", "Projection"])
     
     with viz_tabs[0]:
-        st.plotly_chart(
-            create_tax_breakdown_pie(fed, ss, mi, net),
-            use_container_width=True,
-            help="Interactive pie chart showing the breakdown of your paycheck"
-        )
-        st.caption("💡 **Tip:** Hover over segments for details, click legend items to filter")
+        st.pyplot(create_tax_breakdown_pie(fed, ss, mi, net))
+        st.caption("ðŸ’¡ **Tip:** Hover over segments for details, click legend items to filter")
         
     with viz_tabs[1]:
-        st.plotly_chart(
-            create_tax_comparison_bar(fed, ss, mi),
-            use_container_width=True,
-            help="Bar chart comparing different tax components"
-        )
-        st.caption("💡 **Tip:** Hover over bars for exact values")
+        st.pyplot(create_tax_comparison_bar(fed, ss, mi))
+        st.caption("ðŸ’¡ **Tip:** Hover over bars for exact values")
         
     with viz_tabs[2]:
-        st.plotly_chart(
-            create_annual_projection(net, period),
-            use_container_width=True,
-            help="Line chart showing cumulative net pay throughout the year"
-        )
-        st.caption("💡 **Tip:** Hover over points to see cumulative amounts")
+        st.pyplot(create_annual_projection(net, period))
+        st.caption("ðŸ’¡ **Tip:** Hover over points to see cumulative amounts")
         
         # Add some insights
         annual_net = net * PERIODS[period]
         st.markdown(f"""
-            #### 💰 Annual Projections
+            #### ðŸ’° Annual Projections
             - Your projected annual net pay: **${annual_net:,.2f}**
             - Average monthly take-home: **${(annual_net/12):,.2f}**
             - Per pay period: **${net:,.2f}**
@@ -1036,22 +1024,14 @@ if st.sidebar.button("Calculate"):
             
             with ny_viz_tabs[0]:
                 if total_ny > 0:
-                    st.plotly_chart(
-                        create_ny_tax_breakdown(state_tax, nyc_tax, yonkers_tax),
-                        use_container_width=True,
-                        help="Bar chart comparing different NY tax components"
-                    )
-                    st.caption("💡 **Tip:** Hover over bars for exact values")
+                    st.pyplot(create_ny_tax_breakdown(state_tax, nyc_tax, yonkers_tax))
+                    st.caption("ðŸ’¡ **Tip:** Hover over bars for exact values")
                 else:
                     st.info("No New York taxes to display")
             
             with ny_viz_tabs[1]:
-                st.plotly_chart(
-                    create_total_tax_pie(fed, ss, mi, state_tax, nyc_tax, yonkers_tax, net),
-                    use_container_width=True,
-                    help="Interactive pie chart showing the complete breakdown including all taxes"
-                )
-                st.caption("💡 **Tip:** Click legend items to filter, hover for details")
+                st.pyplot(create_total_tax_pie(fed, ss, mi, state_tax, nyc_tax, yonkers_tax, net))
+                st.caption("ðŸ’¡ **Tip:** Click legend items to filter, hover for details")
             
             # Show annual equivalent if in single paycheck mode
             if not annual:
@@ -1069,12 +1049,12 @@ if st.sidebar.button("Calculate"):
                 """)
                 
             # Add explanatory notes
-            with st.expander("ℹ️ About NY Tax Calculations"):
+            with st.expander("â„¹ï¸ About NY Tax Calculations"):
                 st.markdown(f"""
                     **Calculation Details:**
                     - Filing Status: {ny_status}
                     - Standard Deduction: ${NY_STANDARD_DEDUCTION[ny_status]:,.2f}
-                    - Allowances: {ny_allow} × $1,000 = ${ny_allow*1000:,.2f}
+                    - Allowances: {ny_allow} Ã— $1,000 = ${ny_allow*1000:,.2f}
                     - Extra Withholding: ${ny_extra:,.2f} per period
                     
                     **Notes:**
@@ -1083,31 +1063,31 @@ if st.sidebar.button("Calculate"):
                     - Consult a tax professional for personalized advice
                 """)
 
-# ─── Feedback Section ─────────────────────────────────────────────────────────
-with st.expander("💬 Have feedback or suggestions?"):
+# â”€â”€â”€ Feedback Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+with st.expander("ðŸ’¬ Have feedback or suggestions?"):
     name = st.text_input(
         "Your name (optional)",
-        placeholder="If you'd like to be credited…"
+        placeholder="If you'd like to be creditedâ€¦"
     )
     feedback = st.text_area(
         "Leave any comments, tweaks, or general feedback here:",
-        placeholder="Type away…",
+        placeholder="Type awayâ€¦",
         height=100,
     )
     if st.button("Submit Feedback"):
         if not feedback.strip():
-            st.warning("Oops—you didn't write anything!")
+            st.warning("Oopsâ€”you didn't write anything!")
         else:
             # Acknowledge
-            st.success("Thanks for your feedback! 🙏")
+            st.success("Thanks for your feedback! ðŸ™")
             st.balloons()
             # Save to your server for review
             with open("user_feedback.log", "a") as f:
                 who = name.strip() or "Anonymous"
                 f.write(f"{who}: {feedback.replace(chr(10), ' ')}\n---\n")
 
-# ─── Admin: View All Feedback ─────────────────────────────────────────────────
-if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
+# â”€â”€â”€ Admin: View All Feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+if st.sidebar.checkbox("ðŸ”’ Show Feedback Log (admin)"):
     try:
         with open("user_feedback.log", "r") as f:
             log = f.read().strip()
@@ -1118,16 +1098,16 @@ if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
     except FileNotFoundError:
         st.warning("No feedback log found.")
 
-# ─── Snake Game Section ─────────────────────────────────────────────────────────
+# â”€â”€â”€ Snake Game Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 st.markdown("---")
-with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
+with st.expander("ðŸ Take a Break: Play Snake!", expanded=False):
     st.markdown("""
         ### Snake Game
         Use arrow keys to control the snake:
-        - ⬆️ Move Up
-        - ⬇️ Move Down
-        - ⬅️ Move Left
-        - ➡️ Move Right
+        - â¬†ï¸ Move Up
+        - â¬‡ï¸ Move Down
+        - â¬…ï¸ Move Left
+        - âž¡ï¸ Move Right
         
         Click 'Start New Game' to begin!
         
@@ -1140,50 +1120,34 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
 
-# ─── Visualization Functions ─────────────────────────────────────────────────────
+# â”€â”€â”€ Visualization Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def create_tax_breakdown_pie(fed: Decimal, ss: Decimal, mi: Decimal, net: Decimal):
-    """Create an interactive pie chart showing tax breakdown."""
-    data = {
-        'Category': ['Take Home Pay', 'Federal Tax', 'Social Security', 'Medicare'],
-        'Amount': [float(net), float(fed), float(ss), float(mi)]
-    }
-    df = pd.DataFrame(data)
+    """Create a pie chart showing tax breakdown."""
+    plt.figure(figsize=(10, 8))
+    values = [float(net), float(fed), float(ss), float(mi)]
+    labels = ['Take Home Pay', 'Federal Tax', 'Social Security', 'Medicare']
+    colors = ['#66bb6a', '#ef5350', '#42a5f5', '#ffee58']
     
-    fig = px.pie(
-        df,
-        values='Amount',
-        names='Category',
-        title='Your Paycheck Breakdown',
-        color_discrete_sequence=px.colors.qualitative.Set3,
-        hole=0.4
-    )
-    fig.update_traces(
-        textposition='inside',
-        textinfo='percent+label',
-        hovertemplate="<b>%{label}</b><br>$%{value:.2f}<br>%{percent}"
-    )
-    return fig
+    plt.pie(values, labels=labels, colors=colors, autopct='%1.1f%%')
+    plt.title('Your Paycheck Breakdown')
+    return plt
 
 def create_tax_comparison_bar(fed: Decimal, ss: Decimal, mi: Decimal):
     """Create a bar chart comparing tax components."""
-    data = {
-        'Tax Type': ['Federal Tax', 'Social Security', 'Medicare'],
-        'Amount': [float(fed), float(ss), float(mi)]
-    }
-    df = pd.DataFrame(data)
+    plt.figure(figsize=(10, 6))
+    taxes = ['Federal Tax', 'Social Security', 'Medicare']
+    amounts = [float(fed), float(ss), float(mi)]
+    colors = ['#ef5350', '#42a5f5', '#ffee58']
     
-    fig = px.bar(
-        df,
-        x='Tax Type',
-        y='Amount',
-        title='Tax Components Comparison',
-        color='Tax Type',
-        color_discrete_sequence=px.colors.qualitative.Set3,
-        text=df['Amount'].apply(lambda x: f'${x:,.2f}')
-    )
-    fig.update_traces(textposition='outside')
-    fig.update_layout(showlegend=False)
-    return fig
+    plt.bar(taxes, amounts, color=colors)
+    plt.title('Tax Components Comparison')
+    plt.ylabel('Amount ($)')
+    
+    # Add value labels on top of each bar
+    for i, v in enumerate(amounts):
+        plt.text(i, v, f'${v:,.2f}', ha='center', va='bottom')
+    
+    return plt
 
 def create_annual_projection(amount: Decimal, period: str):
     """Create a line chart showing annual projection."""
@@ -1197,68 +1161,47 @@ def create_annual_projection(amount: Decimal, period: str):
     periods = list(range(1, periods_map[period] + 1))
     amounts = [float(amount) * i for i in periods]
     
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=periods,
-        y=amounts,
-        mode='lines+markers',
-        name='Cumulative Amount',
-        hovertemplate="Period %{x}<br>$%{y:,.2f}"
-    ))
+    plt.figure(figsize=(12, 6))
+    plt.plot(periods, amounts, marker='o')
+    plt.title(f'Annual Projection (Based on {period.title()} Pay)')
+    plt.xlabel('Pay Period')
+    plt.ylabel('Cumulative Amount ($)')
+    plt.grid(True, linestyle='--', alpha=0.7)
     
-    fig.update_layout(
-        title=f'Annual Projection (Based on {period.title()} Pay)',
-        xaxis_title='Pay Period',
-        yaxis_title='Cumulative Amount ($)',
-        hovermode='x'
-    )
-    return fig
+    # Format y-axis labels as currency
+    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+    
+    return plt
 
 def create_ny_tax_breakdown(state_tax: Decimal, nyc_tax: Decimal, yonkers_tax: Decimal):
     """Create a bar chart for NY tax components."""
-    data = {
-        'Tax Type': ['State Tax', 'NYC Tax', 'Yonkers Tax'],
-        'Amount': [float(state_tax), float(nyc_tax), float(yonkers_tax)]
-    }
-    df = pd.DataFrame(data)
+    plt.figure(figsize=(10, 6))
+    taxes = ['State Tax', 'NYC Tax', 'Yonkers Tax']
+    amounts = [float(state_tax), float(nyc_tax), float(yonkers_tax)]
+    colors = ['#66bb6a', '#42a5f5', '#ffee58']
     
-    fig = px.bar(
-        df,
-        x='Tax Type',
-        y='Amount',
-        title='New York Tax Components',
-        color='Tax Type',
-        color_discrete_sequence=px.colors.qualitative.Set2,
-        text=df['Amount'].apply(lambda x: f'${x:,.2f}' if x > 0 else 'N/A')
-    )
-    fig.update_traces(textposition='outside')
-    fig.update_layout(showlegend=False)
-    return fig
+    plt.bar(taxes, amounts, color=colors)
+    plt.title('New York Tax Components')
+    plt.ylabel('Amount ($)')
+    
+    # Add value labels on top of each bar
+    for i, v in enumerate(amounts):
+        plt.text(i, v, f'${v:,.2f}', ha='center', va='bottom')
+    
+    return plt
 
 def create_total_tax_pie(fed: Decimal, ss: Decimal, mi: Decimal, state_tax: Decimal, 
                         nyc_tax: Decimal, yonkers_tax: Decimal, net: Decimal):
     """Create a pie chart showing all tax components including NY taxes."""
-    data = {
-        'Category': ['Take Home Pay', 'Federal Tax', 'Social Security', 'Medicare', 
-                    'NY State Tax', 'NYC Tax', 'Yonkers Tax'],
-        'Amount': [float(net), float(fed), float(ss), float(mi), 
-                  float(state_tax), float(nyc_tax), float(yonkers_tax)]
-    }
-    df = pd.DataFrame(data)
-    df = df[df['Amount'] > 0]  # Only show non-zero amounts
+    plt.figure(figsize=(10, 8))
+    values = [float(net), float(fed), float(ss), float(mi), 
+              float(state_tax), float(nyc_tax), float(yonkers_tax)]
+    labels = ['Take Home Pay', 'Federal Tax', 'Social Security', 'Medicare', 
+              'NY State Tax', 'NYC Tax', 'Yonkers Tax']
+    colors = ['#66bb6a', '#ef5350', '#42a5f5', '#ffee58', '#4caf50', '#2196f3', '#ff9800']
     
-    fig = px.pie(
-        df,
-        values='Amount',
-        names='Category',
-        title='Complete Tax Breakdown (Federal & State)',
-        color_discrete_sequence=px.colors.qualitative.Set3,
-        hole=0.4
-    )
-    fig.update_traces(
-        textposition='inside',
-        textinfo='percent+label',
-        hovertemplate="<b>%{label}</b><br>$%{value:.2f}<br>%{percent}"
-    )
-    return fig
+    plt.pie(values, labels=labels, colors=colors, autopct='%1.1f%%')
+    plt.title('Complete Tax Breakdown (Federal & State)')
+    return plt
+
 
