@@ -664,5 +664,3 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
 
 
 
-
-
