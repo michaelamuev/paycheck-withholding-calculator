@@ -1,4 +1,4 @@
-rom decimal import Decimal
+from decimal import Decimal
 from typing import Dict, Any
 import streamlit as st
 
