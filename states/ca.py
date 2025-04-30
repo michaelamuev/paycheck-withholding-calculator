@@ -88,15 +88,8 @@ class CATaxCalculator(StateTaxCalculator):
         **kwargs
     ) -> StateTaxResult:
         """Calculate CA state taxes."""
-        # Convert to annual if needed
-        periods = {
-            "weekly": Decimal("52"),
-            "biweekly": Decimal("26"),
-            "semimonthly": Decimal("24"),
-            "monthly": Decimal("12")
-        }
-        period_count = periods[pay_period]
-        annual_income = income if is_annual else income * period_count
+        # Income is already annualized by app.py
+        annual_income = income
         
         # Calculate standard deduction
         standard_ded = self.STANDARD_DEDUCTION[filing_status]
@@ -118,9 +111,16 @@ class CATaxCalculator(StateTaxCalculator):
                 
         # Convert to per-period if needed
         if not is_annual:
+            periods = {
+                "weekly": Decimal("52"),
+                "biweekly": Decimal("26"),
+                "semimonthly": Decimal("24"),
+                "monthly": Decimal("12")
+            }
+            period_count = periods[pay_period]
             state_tax = state_tax / period_count
             
-        # Calculate effective rate
+        # Calculate effective rate (using annual amounts)
         effective_rate = state_tax / annual_income if annual_income > 0 else Decimal("0")
         
         return StateTaxResult(
