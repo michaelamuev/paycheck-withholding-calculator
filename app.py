@@ -1,106 +1,6 @@
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 import random
 import streamlit as st
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')  # Required for Streamlit
 from decimal import Decimal, getcontext, ROUND_HALF_UP
-import numpy as np
-import pandas as pd
-
-# Import visualization functions directly from the file
-try:
-    from tax_visualizations import (
-        create_tax_breakdown_pie,
-        create_tax_comparison_bar,
-        create_annual_projection,
-        create_ny_tax_breakdown,
-        create_total_tax_pie
-    )
-except ImportError:
-    # If import fails, use the functions directly from the current file
-    def create_tax_breakdown_pie(fed: Decimal, ss: Decimal, mi: Decimal, net: Decimal):
-        """Create a pie chart showing tax breakdown."""
-        plt.figure(figsize=(10, 8))
-        values = [float(net), float(fed), float(ss), float(mi)]
-        labels = ['Take Home Pay', 'Federal Tax', 'Social Security', 'Medicare']
-        colors = ['#66bb6a', '#ef5350', '#42a5f5', '#ffee58']
-        
-        plt.pie(values, labels=labels, colors=colors, autopct='%1.1f%%')
-        plt.title('Your Paycheck Breakdown')
-        return plt
-
-    def create_tax_comparison_bar(fed: Decimal, ss: Decimal, mi: Decimal):
-        """Create a bar chart comparing tax components."""
-        plt.figure(figsize=(10, 6))
-        taxes = ['Federal Tax', 'Social Security', 'Medicare']
-        amounts = [float(fed), float(ss), float(mi)]
-        colors = ['#ef5350', '#42a5f5', '#ffee58']
-        
-        plt.bar(taxes, amounts, color=colors)
-        plt.title('Tax Components Comparison')
-        plt.ylabel('Amount ($)')
-        
-        for i, v in enumerate(amounts):
-            plt.text(i, v, f'${v:,.2f}', ha='center', va='bottom')
-        
-        return plt
-
-    def create_annual_projection(amount: Decimal, period: str):
-        """Create a line chart showing annual projection."""
-        periods_map = {
-            'weekly': 52,
-            'biweekly': 26,
-            'semimonthly': 24,
-            'monthly': 12
-        }
-        
-        periods = list(range(1, periods_map[period] + 1))
-        amounts = [float(amount) * i for i in periods]
-        
-        plt.figure(figsize=(12, 6))
-        plt.plot(periods, amounts, marker='o')
-        plt.title(f'Annual Projection (Based on {period.title()} Pay)')
-        plt.xlabel('Pay Period')
-        plt.ylabel('Cumulative Amount ($)')
-        plt.grid(True, linestyle='--', alpha=0.7)
-        
-        plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
-        
-        return plt
-
-    def create_ny_tax_breakdown(state_tax: Decimal, nyc_tax: Decimal, yonkers_tax: Decimal):
-        """Create a bar chart for NY tax components."""
-        plt.figure(figsize=(10, 6))
-        taxes = ['State Tax', 'NYC Tax', 'Yonkers Tax']
-        amounts = [float(state_tax), float(nyc_tax), float(yonkers_tax)]
-        colors = ['#66bb6a', '#42a5f5', '#ffee58']
-        
-        plt.bar(taxes, amounts, color=colors)
-        plt.title('New York Tax Components')
-        plt.ylabel('Amount ($)')
-        
-        for i, v in enumerate(amounts):
-            plt.text(i, v, f'${v:,.2f}', ha='center', va='bottom')
-        
-        return plt
-
-    def create_total_tax_pie(fed: Decimal, ss: Decimal, mi: Decimal, state_tax: Decimal, 
-                            nyc_tax: Decimal, yonkers_tax: Decimal, net: Decimal):
-        """Create a pie chart showing all tax components including NY taxes."""
-        plt.figure(figsize=(10, 8))
-        values = [float(net), float(fed), float(ss), float(mi), 
-                  float(state_tax), float(nyc_tax), float(yonkers_tax)]
-        labels = ['Take Home Pay', 'Federal Tax', 'Social Security', 'Medicare', 
-                  'NY State Tax', 'NYC Tax', 'Yonkers Tax']
-        colors = ['#66bb6a', '#ef5350', '#42a5f5', '#ffee58', '#4caf50', '#2196f3', '#ff9800']
-        
-        plt.pie(values, labels=labels, colors=colors, autopct='%1.1f%%')
-        plt.title('Complete Tax Breakdown (Federal & State)')
-        return plt
 
 IRS_TRIVIA = [
     "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
@@ -1020,34 +920,7 @@ if st.sidebar.button("Calculate"):
     cols[2].metric("Medicare",        f"${mi:,.2f}")
     cols[3].metric("Net Pay",         f"${net:,.2f}")
 
-    # ─── Visualizations ────────────────────────────────────────────────────────────
-    st.markdown("### 📊 Interactive Tax Visualizations")
-    
-    # Create tabs for different visualizations
-    viz_tabs = st.tabs(["Breakdown", "Comparison", "Projection"])
-    
-    with viz_tabs[0]:
-        st.pyplot(create_tax_breakdown_pie(fed, ss, mi, net))
-        st.caption("💡 **Tip:** Hover over segments for details, click legend items to filter")
-        
-    with viz_tabs[1]:
-        st.pyplot(create_tax_comparison_bar(fed, ss, mi))
-        st.caption("💡 **Tip:** Hover over bars for exact values")
-        
-    with viz_tabs[2]:
-        st.pyplot(create_annual_projection(net, period))
-        st.caption("💡 **Tip:** Hover over points to see cumulative amounts")
-        
-        # Add some insights
-        annual_net = net * PERIODS[period]
-        st.markdown(f"""
-            #### 💰 Annual Projections
-            - Your projected annual net pay: **${annual_net:,.2f}**
-            - Average monthly take-home: **${(annual_net/12):,.2f}**
-            - Per pay period: **${net:,.2f}**
-        """)
-
-    # Continue with NY state calculations if enabled
+         # ─── NY STATE WITHHOLDING ───────────────────────────
     if calc_ny:
         annual_sal = Decimal(str(gross if annual else gross * PERIODS[period]))
         pp = int(PERIODS[period])
@@ -1068,7 +941,7 @@ if st.sidebar.button("Calculate"):
             supplemental_amount
         )
         
-        # Display NY Tax Information with visualizations
+        # Display NY Tax Information
         st.markdown("### New York Tax Breakdown")
         
         ny_cols = st.columns(4)
@@ -1116,49 +989,35 @@ if st.sidebar.button("Calculate"):
                 help="Total New York taxes per pay period"
             )
             
-            # NY Tax Visualizations
-            ny_viz_tabs = st.tabs(["NY Breakdown", "Complete Picture"])
+        # Show annual equivalent if in single paycheck mode
+        if not annual:
+            annual_state = state_tax * PERIODS[period]
+            annual_nyc = nyc_tax * PERIODS[period]
+            annual_yonkers = yonkers_tax * PERIODS[period]
+            annual_total = total_ny * PERIODS[period]
             
-            with ny_viz_tabs[0]:
-                if total_ny > 0:
-                    st.pyplot(create_ny_tax_breakdown(state_tax, nyc_tax, yonkers_tax))
-                    st.caption("💡 **Tip:** Hover over bars for exact values")
-                else:
-                    st.info("No New York taxes to display")
+            st.markdown("#### Annual Equivalent")
+            st.markdown(f"""
+                - State Tax: ${annual_state:,.2f}
+                - NYC Tax: ${annual_nyc:,.2f}
+                - Yonkers Tax: ${annual_yonkers:,.2f}
+                - **Total NY Tax: ${annual_total:,.2f}**
+            """)
             
-            with ny_viz_tabs[1]:
-                st.pyplot(create_total_tax_pie(fed, ss, mi, state_tax, nyc_tax, yonkers_tax, net))
-                st.caption("💡 **Tip:** Click legend items to filter, hover for details")
-            
-            # Show annual equivalent if in single paycheck mode
-            if not annual:
-                annual_state = state_tax * PERIODS[period]
-                annual_nyc = nyc_tax * PERIODS[period]
-                annual_yonkers = yonkers_tax * PERIODS[period]
-                annual_total = total_ny * PERIODS[period]
+        # Add explanatory notes
+        with st.expander("ℹ️ About NY Tax Calculations"):
+            st.markdown(f"""
+                **Calculation Details:**
+                - Filing Status: {ny_status}
+                - Standard Deduction: ${NY_STANDARD_DEDUCTION[ny_status]:,.2f}
+                - Allowances: {ny_allow} × $1,000 = ${ny_allow*1000:,.2f}
+                - Extra Withholding: ${ny_extra:,.2f} per period
                 
-                st.markdown("#### Annual Equivalent")
-                st.markdown(f"""
-                    - State Tax: ${annual_state:,.2f}
-                    - NYC Tax: ${annual_nyc:,.2f}
-                    - Yonkers Tax: ${annual_yonkers:,.2f}
-                    - **Total NY Tax: ${annual_total:,.2f}**
-                """)
-                
-            # Add explanatory notes
-            with st.expander("ℹ️ About NY Tax Calculations"):
-                st.markdown(f"""
-                    **Calculation Details:**
-                    - Filing Status: {ny_status}
-                    - Standard Deduction: ${NY_STANDARD_DEDUCTION[ny_status]:,.2f}
-                    - Allowances: {ny_allow} × $1,000 = ${ny_allow*1000:,.2f}
-                    - Extra Withholding: ${ny_extra:,.2f} per period
-                    
-                    **Notes:**
-                    - These calculations are estimates based on 2024 tax tables
-                    - Actual withholding may vary based on your specific situation
-                    - Consult a tax professional for personalized advice
-                """)
+                **Notes:**
+                - These calculations are estimates based on 2024 tax tables
+                - Actual withholding may vary based on your specific situation
+                - Consult a tax professional for personalized advice
+            """)
 
 # ─── Feedback Section ─────────────────────────────────────────────────────────
 with st.expander("💬 Have feedback or suggestions?"):
@@ -1216,5 +1075,6 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
 
 
