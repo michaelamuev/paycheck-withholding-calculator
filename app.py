@@ -1,6 +1,9 @@
 import random
 import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
 from decimal import Decimal, getcontext, ROUND_HALF_UP
+import pandas as pd
 
 IRS_TRIVIA = [
     "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
@@ -920,7 +923,46 @@ if st.sidebar.button("Calculate"):
     cols[2].metric("Medicare",        f"${mi:,.2f}")
     cols[3].metric("Net Pay",         f"${net:,.2f}")
 
-         # ─── NY STATE WITHHOLDING ───────────────────────────
+    # ─── Visualizations ────────────────────────────────────────────────────────────
+    st.markdown("### 📊 Interactive Tax Visualizations")
+    
+    # Create tabs for different visualizations
+    viz_tabs = st.tabs(["Breakdown", "Comparison", "Projection"])
+    
+    with viz_tabs[0]:
+        st.plotly_chart(
+            create_tax_breakdown_pie(fed, ss, mi, net),
+            use_container_width=True,
+            help="Interactive pie chart showing the breakdown of your paycheck"
+        )
+        st.caption("💡 **Tip:** Hover over segments for details, click legend items to filter")
+        
+    with viz_tabs[1]:
+        st.plotly_chart(
+            create_tax_comparison_bar(fed, ss, mi),
+            use_container_width=True,
+            help="Bar chart comparing different tax components"
+        )
+        st.caption("💡 **Tip:** Hover over bars for exact values")
+        
+    with viz_tabs[2]:
+        st.plotly_chart(
+            create_annual_projection(net, period),
+            use_container_width=True,
+            help="Line chart showing cumulative net pay throughout the year"
+        )
+        st.caption("💡 **Tip:** Hover over points to see cumulative amounts")
+        
+        # Add some insights
+        annual_net = net * PERIODS[period]
+        st.markdown(f"""
+            #### 💰 Annual Projections
+            - Your projected annual net pay: **${annual_net:,.2f}**
+            - Average monthly take-home: **${(annual_net/12):,.2f}**
+            - Per pay period: **${net:,.2f}**
+        """)
+
+    # Continue with NY state calculations if enabled
     if calc_ny:
         annual_sal = Decimal(str(gross if annual else gross * PERIODS[period]))
         pp = int(PERIODS[period])
@@ -941,7 +983,7 @@ if st.sidebar.button("Calculate"):
             supplemental_amount
         )
         
-        # Display NY Tax Information
+        # Display NY Tax Information with visualizations
         st.markdown("### New York Tax Breakdown")
         
         ny_cols = st.columns(4)
@@ -989,35 +1031,57 @@ if st.sidebar.button("Calculate"):
                 help="Total New York taxes per pay period"
             )
             
-        # Show annual equivalent if in single paycheck mode
-        if not annual:
-            annual_state = state_tax * PERIODS[period]
-            annual_nyc = nyc_tax * PERIODS[period]
-            annual_yonkers = yonkers_tax * PERIODS[period]
-            annual_total = total_ny * PERIODS[period]
+            # NY Tax Visualizations
+            ny_viz_tabs = st.tabs(["NY Breakdown", "Complete Picture"])
             
-            st.markdown("#### Annual Equivalent")
-            st.markdown(f"""
-                - State Tax: ${annual_state:,.2f}
-                - NYC Tax: ${annual_nyc:,.2f}
-                - Yonkers Tax: ${annual_yonkers:,.2f}
-                - **Total NY Tax: ${annual_total:,.2f}**
-            """)
+            with ny_viz_tabs[0]:
+                if total_ny > 0:
+                    st.plotly_chart(
+                        create_ny_tax_breakdown(state_tax, nyc_tax, yonkers_tax),
+                        use_container_width=True,
+                        help="Bar chart comparing different NY tax components"
+                    )
+                    st.caption("💡 **Tip:** Hover over bars for exact values")
+                else:
+                    st.info("No New York taxes to display")
             
-        # Add explanatory notes
-        with st.expander("ℹ️ About NY Tax Calculations"):
-            st.markdown(f"""
-                **Calculation Details:**
-                - Filing Status: {ny_status}
-                - Standard Deduction: ${NY_STANDARD_DEDUCTION[ny_status]:,.2f}
-                - Allowances: {ny_allow} × $1,000 = ${ny_allow*1000:,.2f}
-                - Extra Withholding: ${ny_extra:,.2f} per period
+            with ny_viz_tabs[1]:
+                st.plotly_chart(
+                    create_total_tax_pie(fed, ss, mi, state_tax, nyc_tax, yonkers_tax, net),
+                    use_container_width=True,
+                    help="Interactive pie chart showing the complete breakdown including all taxes"
+                )
+                st.caption("💡 **Tip:** Click legend items to filter, hover for details")
+            
+            # Show annual equivalent if in single paycheck mode
+            if not annual:
+                annual_state = state_tax * PERIODS[period]
+                annual_nyc = nyc_tax * PERIODS[period]
+                annual_yonkers = yonkers_tax * PERIODS[period]
+                annual_total = total_ny * PERIODS[period]
                 
-                **Notes:**
-                - These calculations are estimates based on 2024 tax tables
-                - Actual withholding may vary based on your specific situation
-                - Consult a tax professional for personalized advice
-            """)
+                st.markdown("#### Annual Equivalent")
+                st.markdown(f"""
+                    - State Tax: ${annual_state:,.2f}
+                    - NYC Tax: ${annual_nyc:,.2f}
+                    - Yonkers Tax: ${annual_yonkers:,.2f}
+                    - **Total NY Tax: ${annual_total:,.2f}**
+                """)
+                
+            # Add explanatory notes
+            with st.expander("ℹ️ About NY Tax Calculations"):
+                st.markdown(f"""
+                    **Calculation Details:**
+                    - Filing Status: {ny_status}
+                    - Standard Deduction: ${NY_STANDARD_DEDUCTION[ny_status]:,.2f}
+                    - Allowances: {ny_allow} × $1,000 = ${ny_allow*1000:,.2f}
+                    - Extra Withholding: ${ny_extra:,.2f} per period
+                    
+                    **Notes:**
+                    - These calculations are estimates based on 2024 tax tables
+                    - Actual withholding may vary based on your specific situation
+                    - Consult a tax professional for personalized advice
+                """)
 
 # ─── Feedback Section ─────────────────────────────────────────────────────────
 with st.expander("💬 Have feedback or suggestions?"):
@@ -1075,4 +1139,126 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
+# ─── Visualization Functions ─────────────────────────────────────────────────────
+def create_tax_breakdown_pie(fed: Decimal, ss: Decimal, mi: Decimal, net: Decimal):
+    """Create an interactive pie chart showing tax breakdown."""
+    data = {
+        'Category': ['Take Home Pay', 'Federal Tax', 'Social Security', 'Medicare'],
+        'Amount': [float(net), float(fed), float(ss), float(mi)]
+    }
+    df = pd.DataFrame(data)
+    
+    fig = px.pie(
+        df,
+        values='Amount',
+        names='Category',
+        title='Your Paycheck Breakdown',
+        color_discrete_sequence=px.colors.qualitative.Set3,
+        hole=0.4
+    )
+    fig.update_traces(
+        textposition='inside',
+        textinfo='percent+label',
+        hovertemplate="<b>%{label}</b><br>$%{value:.2f}<br>%{percent}"
+    )
+    return fig
+
+def create_tax_comparison_bar(fed: Decimal, ss: Decimal, mi: Decimal):
+    """Create a bar chart comparing tax components."""
+    data = {
+        'Tax Type': ['Federal Tax', 'Social Security', 'Medicare'],
+        'Amount': [float(fed), float(ss), float(mi)]
+    }
+    df = pd.DataFrame(data)
+    
+    fig = px.bar(
+        df,
+        x='Tax Type',
+        y='Amount',
+        title='Tax Components Comparison',
+        color='Tax Type',
+        color_discrete_sequence=px.colors.qualitative.Set3,
+        text=df['Amount'].apply(lambda x: f'${x:,.2f}')
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_layout(showlegend=False)
+    return fig
+
+def create_annual_projection(amount: Decimal, period: str):
+    """Create a line chart showing annual projection."""
+    periods_map = {
+        'weekly': 52,
+        'biweekly': 26,
+        'semimonthly': 24,
+        'monthly': 12
+    }
+    
+    periods = list(range(1, periods_map[period] + 1))
+    amounts = [float(amount) * i for i in periods]
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=periods,
+        y=amounts,
+        mode='lines+markers',
+        name='Cumulative Amount',
+        hovertemplate="Period %{x}<br>$%{y:,.2f}"
+    ))
+    
+    fig.update_layout(
+        title=f'Annual Projection (Based on {period.title()} Pay)',
+        xaxis_title='Pay Period',
+        yaxis_title='Cumulative Amount ($)',
+        hovermode='x'
+    )
+    return fig
+
+def create_ny_tax_breakdown(state_tax: Decimal, nyc_tax: Decimal, yonkers_tax: Decimal):
+    """Create a bar chart for NY tax components."""
+    data = {
+        'Tax Type': ['State Tax', 'NYC Tax', 'Yonkers Tax'],
+        'Amount': [float(state_tax), float(nyc_tax), float(yonkers_tax)]
+    }
+    df = pd.DataFrame(data)
+    
+    fig = px.bar(
+        df,
+        x='Tax Type',
+        y='Amount',
+        title='New York Tax Components',
+        color='Tax Type',
+        color_discrete_sequence=px.colors.qualitative.Set2,
+        text=df['Amount'].apply(lambda x: f'${x:,.2f}' if x > 0 else 'N/A')
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_layout(showlegend=False)
+    return fig
+
+def create_total_tax_pie(fed: Decimal, ss: Decimal, mi: Decimal, state_tax: Decimal, 
+                        nyc_tax: Decimal, yonkers_tax: Decimal, net: Decimal):
+    """Create a pie chart showing all tax components including NY taxes."""
+    data = {
+        'Category': ['Take Home Pay', 'Federal Tax', 'Social Security', 'Medicare', 
+                    'NY State Tax', 'NYC Tax', 'Yonkers Tax'],
+        'Amount': [float(net), float(fed), float(ss), float(mi), 
+                  float(state_tax), float(nyc_tax), float(yonkers_tax)]
+    }
+    df = pd.DataFrame(data)
+    df = df[df['Amount'] > 0]  # Only show non-zero amounts
+    
+    fig = px.pie(
+        df,
+        values='Amount',
+        names='Category',
+        title='Complete Tax Breakdown (Federal & State)',
+        color_discrete_sequence=px.colors.qualitative.Set3,
+        hole=0.4
+    )
+    fig.update_traces(
+        textposition='inside',
+        textinfo='percent+label',
+        hovertemplate="<b>%{label}</b><br>$%{value:.2f}<br>%{percent}"
+    )
+    return fig
 
