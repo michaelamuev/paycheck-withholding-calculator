@@ -2,6 +2,8 @@ from typing import Type, Dict
 from .base import StateTaxCalculator
 from .ny import NYTaxCalculator
 from .ca import CATaxCalculator
+from .nj import NJTaxCalculator
+from .oh import OHTaxCalculator
 
 # Registry of state calculators
 STATE_CALCULATORS: Dict[str, Type[StateTaxCalculator]] = {}
@@ -26,4 +28,6 @@ def get_state_name(state_code: str) -> str:
 
 # Register available calculators
 register_calculator(NYTaxCalculator)
-register_calculator(CATaxCalculator) 
+register_calculator(CATaxCalculator)
+register_calculator(NJTaxCalculator)
+register_calculator(OHTaxCalculator) 
