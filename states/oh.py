@@ -135,7 +135,8 @@ class OHTaxCalculator(StateTaxCalculator):
         total_tax = final_tax + sum(local_taxes.values())
         effective_rate = total_tax / annual_income if annual_income > 0 else Decimal("0")
         
-        render = {
+        # Store render information in class for UI display
+        self.render_info = {
             "State Tax": f"${final_tax:,.2f}",
             "Taxable Income": f"${annual_income:,.2f}",
             "Exemption Credit": f"${exemption_credit:,.2f}"
@@ -149,8 +150,7 @@ class OHTaxCalculator(StateTaxCalculator):
             effective_rate=effective_rate,
             marginal_rate=self._calculate_marginal_rate(annual_income, filing_status),
             warnings=["Part-year resident calculations are estimates"] if part_year_resident else None,
-            errors=None,
-            render=render
+            errors=None
         )
         
     def get_ui_components(self) -> Dict[str, Any]:
@@ -198,5 +198,7 @@ class OHTaxCalculator(StateTaxCalculator):
                 "has_school_district_tax": has_school_district_tax,
                 "school_district_rate": Decimal(str(school_district_rate / 100)) if school_district_rate is not None else None
             }
+            
+        return {"render": render} 
             
         return {"render": render} 
