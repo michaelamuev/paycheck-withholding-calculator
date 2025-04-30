@@ -1,4 +1,4 @@
-from decimal import Decimal
+rom decimal import Decimal
 from typing import Dict, Any
 import streamlit as st
 
@@ -12,6 +12,11 @@ class OHTaxCalculator(StateTaxCalculator):
         "Head": Decimal("0"),
         "Separate": Decimal("0"),
         "Widow": Decimal("0")
+    }
+    
+    # School district tax rates
+    SCHOOL_DISTRICT_RATES = {
+        "default": Decimal("0.01")  # Default 1% rate if specific district not specified
     }
     
     # 2024 tax brackets (HB 33 eliminated taxes on income under $26,050)
