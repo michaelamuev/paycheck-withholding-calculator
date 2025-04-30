@@ -1,4 +1,4 @@
-from decimal import Decimal
+rom decimal import Decimal
 from typing import Dict, Any
 import streamlit as st
 
@@ -21,19 +21,19 @@ class NJTaxCalculator(StateTaxCalculator):
             {"min": Decimal("20000"), "max": Decimal("35000"), "rate": Decimal("0.0175"), "base": Decimal("280")},
             {"min": Decimal("35000"), "max": Decimal("40000"), "rate": Decimal("0.035"), "base": Decimal("542.50")},
             {"min": Decimal("40000"), "max": Decimal("75000"), "rate": Decimal("0.0553"), "base": Decimal("717.50")},
-            {"min": Decimal("75000"), "max": Decimal("500000"), "rate": Decimal("0.0637"), "base": Decimal("2,651.00")},
-            {"min": Decimal("500000"), "max": Decimal("1000000"), "rate": Decimal("0.0897"), "base": Decimal("29,723.50")},
-            {"min": Decimal("1000000"), "max": None, "rate": Decimal("0.1075"), "base": Decimal("74,573.50")}
+            {"min": Decimal("75000"), "max": Decimal("500000"), "rate": Decimal("0.0637"), "base": Decimal("2651.00")},
+            {"min": Decimal("500000"), "max": Decimal("1000000"), "rate": Decimal("0.0897"), "base": Decimal("29723.50")},
+            {"min": Decimal("1000000"), "max": None, "rate": Decimal("0.1075"), "base": Decimal("74573.50")}
         ],
         "Married": [
             {"min": Decimal("0"), "max": Decimal("20000"), "rate": Decimal("0.014"), "base": Decimal("0")},
             {"min": Decimal("20000"), "max": Decimal("50000"), "rate": Decimal("0.0175"), "base": Decimal("280")},
             {"min": Decimal("50000"), "max": Decimal("70000"), "rate": Decimal("0.0245"), "base": Decimal("805")},
-            {"min": Decimal("70000"), "max": Decimal("80000"), "rate": Decimal("0.035"), "base": Decimal("1,295.50")},
-            {"min": Decimal("80000"), "max": Decimal("150000"), "rate": Decimal("0.0553"), "base": Decimal("1,645.00")},
-            {"min": Decimal("150000"), "max": Decimal("500000"), "rate": Decimal("0.0637"), "base": Decimal("5,512.50")},
-            {"min": Decimal("500000"), "max": Decimal("1000000"), "rate": Decimal("0.0897"), "base": Decimal("27,597.50")},
-            {"min": Decimal("1000000"), "max": None, "rate": Decimal("0.1075"), "base": Decimal("72,447.50")}
+            {"min": Decimal("70000"), "max": Decimal("80000"), "rate": Decimal("0.035"), "base": Decimal("1295.50")},
+            {"min": Decimal("80000"), "max": Decimal("150000"), "rate": Decimal("0.0553"), "base": Decimal("1645.00")},
+            {"min": Decimal("150000"), "max": Decimal("500000"), "rate": Decimal("0.0637"), "base": Decimal("5512.50")},
+            {"min": Decimal("500000"), "max": Decimal("1000000"), "rate": Decimal("0.0897"), "base": Decimal("27597.50")},
+            {"min": Decimal("1000000"), "max": None, "rate": Decimal("0.1075"), "base": Decimal("72447.50")}
         ]
     }
     
