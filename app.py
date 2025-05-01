@@ -793,8 +793,10 @@ with st.expander("🔒 Analytics Dashboard (Admin Only)", expanded=False):
                     for campaign, count in sorted(utm_campaigns.items(), key=lambda x: x[1], reverse=True)[:5]:
                         st.text(f"{campaign}: {count}")
                 
-                # Show raw data in expandable section
-                with st.expander("View Raw Analytics Data"):
+                # Show raw data with a checkbox toggle
+                if st.checkbox("Show Raw Analytics Data"):
+                    st.markdown("#### Raw Analytics Data"
+                    
                     st.json(analytics_data)
                     
                 if st.button("Logout"):
