@@ -1,13 +1,47 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import json
+import os
+
+def load_high_score():
+    """Load high score from file"""
+    try:
+        if os.path.exists('high_score.json'):
+            with open('high_score.json', 'r') as f:
+                data = json.load(f)
+                return data.get('score', 0), data.get('player', 'Anonymous')
+    except Exception as e:
+        print(f"Error loading high score: {e}")
+    return 0, 'Anonymous'
+
+def save_high_score(score, player):
+    """Save high score to file"""
+    try:
+        with open('high_score.json', 'w') as f:
+            json.dump({'score': score, 'player': player}, f)
+    except Exception as e:
+        print(f"Error saving high score: {e}")
 
 def snake_game():
     try:
+        # Load high score from file
+        high_score, high_score_player = load_high_score()
+        
         # Initialize session state for high score if it doesn't exist
         if 'high_score' not in st.session_state:
-            st.session_state.high_score = 0
+            st.session_state.high_score = high_score
         if 'high_score_player' not in st.session_state:
-            st.session_state.high_score_player = "Anonymous"
+            st.session_state.high_score_player = high_score_player
+
+        # Handle high score updates from JavaScript
+        if 'new_high_score' in st.session_state:
+            score = st.session_state.new_high_score['score']
+            player = st.session_state.new_high_score['player']
+            if score > st.session_state.high_score:
+                st.session_state.high_score = score
+                st.session_state.high_score_player = player
+                save_high_score(score, player)
+            del st.session_state.new_high_score
 
         # CSS for the game canvas
         st.markdown("""
@@ -156,18 +190,22 @@ def snake_game():
                     
                     if (score > currentHighScore) {{
                         const playerName = prompt(`🎮 BOOM! You just crushed the high score with ${{score}} points! \n\nWant to immortalize your victory? Drop your gamer tag, nickname, or any cool name below! \n(or just hit Cancel to stay mysterious 😎)`);
-                        if (playerName) {{
-                            // Update the high score display
-                            currentHighScore = score;
-                            highScoreElement.textContent = `High Score: ${{score}} by ${{playerName}}`;
-                            
-                            // Send the high score to the parent window
-                            window.parent.postMessage({{
-                                type: 'newHighScore',
-                                score: score,
-                                player: playerName
-                            }}, '*');
-                        }}
+                        const finalName = playerName || 'Anonymous';
+                        
+                        // Update the high score display
+                        currentHighScore = score;
+                        highScoreElement.textContent = `High Score: ${{score}} by ${{finalName}}`;
+                        
+                        // Send the high score to Streamlit
+                        window.parent.postMessage({{
+                            type: 'streamlit:setComponentValue',
+                            data: {{
+                                new_high_score: {{
+                                    score: score,
+                                    player: finalName
+                                }}
+                            }}
+                        }}, '*');
                     }}
                     alert(`Game Over! Score: ${{score}}`);
                 }}
@@ -210,18 +248,8 @@ def snake_game():
         </script>
         """
         
-        # Create a unique key for the component
-        component_id = "snake_game_component"
-        
-        # Render the game
-        components.html(game_code, height=600, width=450)
-        
-        # Handle high score updates through Streamlit's session state
-        if st.session_state.get('new_high_score'):
-            st.session_state.high_score = st.session_state.new_high_score['score']
-            st.session_state.high_score_player = st.session_state.new_high_score['player']
-            del st.session_state.new_high_score
-            st.experimental_rerun()
+        # Render the game with a key for proper component communication
+        components.html(game_code, height=600, width=450, key="snake_game")
         
     except Exception as e:
         st.error(f"Error loading snake game: {str(e)}")
