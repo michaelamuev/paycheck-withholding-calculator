@@ -15,6 +15,15 @@ st.set_page_config(
     layout="wide"
 )
 
+IRS_TRIVIA = [
+    "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
+    "Tip: If you have more than one job, checking Step 2 can prevent underwithholding later in the year.",
+    "Fun fact: Publication 15-T was first introduced in 2005, but percentage-method tables go back much further!",
+    "Remember: Your standard deduction (for 2024) is $14,600 if single, $29,200 if married filing jointly.",
+    "Heads up: Any extra withholding you enter in Step 4(c) applies every pay period, so small amounts add up fast.",
+    "IRS trivia: Form W-4P is for pensions and annuities, not your regular paycheck — don't mix them up!",
+]
+
 # ─── ANALYTICS SETUP ─────────────────────────────────────────────────────────────
 # Google Analytics 4 Measurement ID
 GA_TRACKING_ID = "G-68KQ82NWCK"  # User's GA4 tracking ID
@@ -99,28 +108,12 @@ ga_script = f"""
 </script>
 """
 
-# Inject GA4 tracking code
-st.markdown(ga_script, unsafe_allow_html=True)
-
-IRS_TRIVIA = [
-    "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
-    "Tip: If you have more than one job, checking Step 2 can prevent underwithholding later in the year.",
-    "Fun fact: Publication 15-T was first introduced in 2005, but percentage-method tables go back much further!",
-    "Remember: Your standard deduction (for 2024) is $14,600 if single, $29,200 if married filing jointly.",
-    "Heads up: Any extra withholding you enter in Step 4(c) applies every pay period, so small amounts add up fast.",
-    "IRS trivia: Form W-4P is for pensions and annuities, not your regular paycheck — don't mix them up!",
-]
-
-
-# ─── Page Config ───────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="2024 Withholding (Pub 15-T)",
-    page_icon="💸",
-    layout="wide"
-)
+# Display tip of the day
 tip = random.choice(IRS_TRIVIA)
 st.info(f"💡 **Tip of the Day:** {tip}")
 
+# Inject GA4 tracking code
+st.markdown(ga_script, unsafe_allow_html=True)
 
 # ─── Precision ─────────────────────────────────────────────────────────────────
 getcontext().prec = 28
@@ -835,7 +828,6 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
-
 
 
 
