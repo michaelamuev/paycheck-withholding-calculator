@@ -6,8 +6,8 @@ import os
 def load_high_score():
     """Load high score from file"""
     try:
-        if os.path.exists('high_score.json'):
-            with open('high_score.json', 'r') as f:
+        if os.path.exists('.private/high_score.json'):
+            with open('.private/high_score.json', 'r') as f:
                 data = json.load(f)
                 return data.get('score', 0), data.get('player', 'Anonymous')
     except Exception as e:
@@ -17,13 +17,18 @@ def load_high_score():
 def save_high_score(score, player):
     """Save high score to file"""
     try:
-        with open('high_score.json', 'w') as f:
+        os.makedirs('.private', exist_ok=True)
+        with open('.private/high_score.json', 'w') as f:
             json.dump({'score': score, 'player': player}, f)
+            print(f"Saved high score: {score} by {player}")  # Debug print
     except Exception as e:
         print(f"Error saving high score: {e}")
 
 def snake_game():
     try:
+        # Create container for the game
+        game_container = st.empty()
+        
         # Load high score from file
         high_score, high_score_player = load_high_score()
         
@@ -32,38 +37,6 @@ def snake_game():
             st.session_state.high_score = high_score
         if 'high_score_player' not in st.session_state:
             st.session_state.high_score_player = high_score_player
-
-        # Handle high score updates from JavaScript
-        if 'new_high_score' in st.session_state:
-            score = st.session_state.new_high_score['score']
-            player = st.session_state.new_high_score['player']
-            if score > st.session_state.high_score:
-                st.session_state.high_score = score
-                st.session_state.high_score_player = player
-                save_high_score(score, player)
-            del st.session_state.new_high_score
-
-        # CSS for the game canvas
-        st.markdown("""
-            <style>
-                canvas {
-                    border: 2px solid #333;
-                    background: #f0f0f0;
-                }
-                .game-container {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    margin: 20px 0;
-                }
-                .high-score {
-                    margin-top: 10px;
-                    font-size: 18px;
-                    font-weight: bold;
-                    color: #2196F3;
-                }
-            </style>
-        """, unsafe_allow_html=True)
 
         # JavaScript code for the Snake game
         game_code = f"""
@@ -184,18 +157,28 @@ def snake_game():
                     }}
                 }}
 
-                // Function to update high score in Streamlit
                 function updateHighScore(score, player) {{
-                    const data = {{
-                        score: score,
-                        player: player
-                    }};
-                    
-                    // Send data to Python backend using window.parent
-                    window.parent.postMessage({{
-                        type: 'streamlit:message',
-                        data: data
-                    }}, '*');
+                    // Create a form element
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.style.display = 'none';
+
+                    // Add hidden inputs for score and player
+                    const scoreInput = document.createElement('input');
+                    scoreInput.type = 'hidden';
+                    scoreInput.name = 'high_score';
+                    scoreInput.value = score;
+                    form.appendChild(scoreInput);
+
+                    const playerInput = document.createElement('input');
+                    playerInput.type = 'hidden';
+                    playerInput.name = 'player_name';
+                    playerInput.value = player;
+                    form.appendChild(playerInput);
+
+                    // Add the form to the document and submit it
+                    document.body.appendChild(form);
+                    form.submit();
                 }}
 
                 function gameOver() {{
@@ -203,20 +186,21 @@ def snake_game():
                     clearInterval(gameInterval);
                     
                     if (score > currentHighScore) {{
-                        const playerName = prompt(`🎮 BOOM! You just crushed the high score with ${{score}} points! \n\nWant to immortalize your victory? Drop your gamer tag, nickname, or any cool name below! \n(or just hit Cancel to stay mysterious 😎)`);
+                        const playerName = prompt(`🎮 New High Score: ${{score}}! Enter your name:`);
                         const finalName = playerName || 'Anonymous';
                         
                         // Update the high score display
                         currentHighScore = score;
                         highScoreElement.textContent = `High Score: ${{score}} by ${{finalName}}`;
                         
-                        // Update high score in Streamlit
-                        updateHighScore(score, finalName);
-                        
-                        // Force page reload to update the high score
-                        setTimeout(() => {{
-                            window.parent.location.reload();
-                        }}, 1000);
+                        // Save the high score
+                        fetch(`/_stcore/high_score?score=${{score}}&player=${{finalName}}`)
+                            .then(() => {{
+                                // Reload the page after a short delay
+                                setTimeout(() => {{
+                                    window.location.reload();
+                                }}, 500);
+                            }});
                     }}
                     alert(`Game Over! Score: ${{score}}`);
                 }}
@@ -258,18 +242,37 @@ def snake_game():
             }}
         </script>
         """
-        
-        # Render the game without the key parameter
-        components.html(game_code, height=600, width=450)
-        
-        # Handle high score updates
-        if st.session_state.get('streamlit_message'):
-            data = st.session_state.streamlit_message
-            if data.get('score', 0) > st.session_state.high_score:
-                st.session_state.high_score = data['score']
-                st.session_state.high_score_player = data['player']
-                save_high_score(data['score'], data['player'])
-            del st.session_state.streamlit_message
+
+        # Add form handling
+        if st.request.method == "POST":
+            score = int(st.request.form.get("high_score", 0))
+            player = st.request.form.get("player_name", "Anonymous")
+            if score > st.session_state.high_score:
+                st.session_state.high_score = score
+                st.session_state.high_score_player = player
+                save_high_score(score, player)
+                st.experimental_rerun()
+
+        # Handle direct API calls
+        query_params = st.experimental_get_query_params()
+        if 'score' in query_params and 'player' in query_params:
+            score = int(query_params['score'][0])
+            player = query_params['player'][0]
+            if score > st.session_state.high_score:
+                st.session_state.high_score = score
+                st.session_state.high_score_player = player
+                save_high_score(score, player)
+                st.experimental_rerun()
+
+        # Render the game
+        game_container.markdown("""
+            <style>
+                canvas { border: 2px solid #333; background: #f0f0f0; }
+                .game-container { display: flex; flex-direction: column; align-items: center; margin: 20px 0; }
+                .high-score { margin-top: 10px; font-size: 18px; font-weight: bold; color: #2196F3; }
+            </style>
+        """, unsafe_allow_html=True)
+        game_container.components.html(game_code, height=600, width=450)
         
     except Exception as e:
         st.error(f"Error loading snake game: {str(e)}")
