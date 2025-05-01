@@ -739,7 +739,7 @@ with st.expander("🔒 Analytics Dashboard (Admin Only)", expanded=False):
         if st.button("Login"):
             if verify_admin_password(admin_password):
                 st.session_state.is_admin = True
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("Invalid password")
     else:
@@ -799,7 +799,7 @@ with st.expander("🔒 Analytics Dashboard (Admin Only)", expanded=False):
                     
                 if st.button("Logout"):
                     st.session_state.is_admin = False
-                    st.experimental_rerun()
+                    st.rerun()
                     
             else:
                 st.info("No analytics data available yet.")
