@@ -54,21 +54,16 @@ def verify_admin_password(password):
 
 def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
     """Track page views and feature usage with privacy-friendly metrics"""
-    st.session_state.page_views += 1
+    # Add deduplication check
     current_time = time.time()
+    last_track_time = getattr(st.session_state, 'last_track_time', 0)
     
-    # Aggregate session data without personal identifiers
-def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
-    """Track page views and feature usage with privacy-friendly metrics"""
+    # Only track if more than 1 second has passed since last track
+    if current_time - last_track_time < 1:
+        return
+        
+    st.session_state.last_track_time = current_time
     st.session_state.page_views += 1
-    current_time = time.time()
-    
-    # Aggregate session data without personal identifiers
-
-def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
-    """Track page views and feature usage with privacy-friendly metrics"""
-    st.session_state.page_views += 1
-    current_time = time.time()
     
     # Aggregate session data without personal identifiers
     session_data = {
@@ -86,20 +81,6 @@ def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
     # Save analytics data only if admin is logged in
     if st.session_state.is_admin:
         save_analytics_data(session_data)
-    
-    st.session_state.visitor_data.append(session_data)
-    st.session_state.last_updated = current_time
-    
-    # Save analytics data only if admin is logged in
-    if st.session_state.is_admin:
-        save_analytics_data(session_data)
-
-    st.session_state.visitor_data.append(session_data)
-    st.session_state.last_updated = current_time
-    
-    # Save analytics data only if admin is logged in
-    if st.session_state.is_admin:
-        save_analytics_data(session_data)
 
 def track_feature_usage(feature_name: str):
     """Track which calculator features are being used"""
@@ -107,7 +88,7 @@ def track_feature_usage(feature_name: str):
         st.session_state.features_used.add(feature_name)
 
 def save_analytics_data(data):
-    """Save analytics data to a JSON file"""
+    """Save analytics data to a JSON file with deduplication"""
     if not st.session_state.is_admin:
         return
         
@@ -122,10 +103,16 @@ def save_analytics_data(data):
         else:
             existing_data = []
             
-        existing_data.append(data)
-        
-        with open(analytics_file, 'w') as f:
-            json.dump(existing_data, f)
+        # Deduplication check - don't add if same timestamp exists
+        if not any(entry.get('timestamp') == data['timestamp'] for entry in existing_data):
+            # Add additional metrics
+            data['features_used'] = list(st.session_state.features_used)
+            data['total_session_pageviews'] = st.session_state.page_views
+            
+            existing_data.append(data)
+            
+            with open(analytics_file, 'w') as f:
+                json.dump(existing_data, f, indent=2)
     except Exception as e:
         st.error(f"Error saving analytics data: {str(e)}")
 
@@ -632,7 +619,7 @@ if st.sidebar.button("Calculate"):
         st.stop()
         
     # Track calculator usage
-    track_feature_usage('calculator')
+    track_feature_usage('calculator_used')  # Track basic calculator usage
     if multi:
         track_feature_usage('multiple_jobs')
     if dep_credit > 0:
@@ -792,78 +779,10 @@ with st.expander("🔒 Analytics Dashboard (Admin Only)", expanded=False):
             else:
                 st.error("Invalid password")
     else:
-        st.markdown("### Analytics Dashboard")
-        
-        # Display current session stats
-        st.subheader("Current Session")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Page Views", st.session_state.page_views)
-        with col2:
-            st.metric("Session Duration", f"{(time.time() - st.session_state.session_start) / 60:.1f} min")
-        with col3:
-            st.metric("Features Used", len(st.session_state.features_used))
-            
-        # Show features used
-        if st.session_state.features_used:
-            st.markdown("**Features Used This Session:**")
-            for feature in sorted(st.session_state.features_used):
-                st.markdown(f"- {feature}")
-        
-        # UTM Source Analysis
-        st.subheader("Traffic Sources")
-        try:
-            analytics_file = ".private/analytics_data.json"
-            if os.path.exists(analytics_file):
-                with open(analytics_file, 'r') as f:
-                    analytics_data = json.load(f)
-                
-                # Aggregate UTM data
-                utm_sources = {}
-                utm_mediums = {}
-                utm_campaigns = {}
-                
-                for entry in analytics_data:
-                    source = entry.get('utm_source', 'direct')
-                    medium = entry.get('utm_medium', 'none')
-                    campaign = entry.get('utm_campaign', 'none')
-                    
-                    utm_sources[source] = utm_sources.get(source, 0) + 1
-                    utm_mediums[medium] = utm_mediums.get(medium, 0) + 1
-                    utm_campaigns[campaign] = utm_campaigns.get(campaign, 0) + 1
-                
-                # Display traffic source breakdown
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.markdown("**Top Sources**")
-                    for source, count in sorted(utm_sources.items(), key=lambda x: x[1], reverse=True)[:5]:
-                        st.text(f"{source}: {count}")
-                        
-                with col2:
-                    st.markdown("**Top Mediums**")
-                    for medium, count in sorted(utm_mediums.items(), key=lambda x: x[1], reverse=True)[:5]:
-                        st.text(f"{medium}: {count}")
-                        
-                with col3:
-                    st.markdown("**Top Campaigns**")
-                    for campaign, count in sorted(utm_campaigns.items(), key=lambda x: x[1], reverse=True)[:5]:
-                        st.text(f"{campaign}: {count}")
-                
-                # Show raw data with a checkbox toggle
-                if st.checkbox("Show Raw Analytics Data"):
-                    st.markdown("#### Raw Analytics Data")
-                    st.json(analytics_data)
-                    
-                if st.button("Logout"):
-                    st.session_state.is_admin = False
-                    st.rerun()
-                    
-            else:
-                st.info("No analytics data available yet.")
-                
-        except Exception as e:
-            st.error(f"Error loading analytics data: {str(e)}")
+        display_analytics_dashboard()
+        if st.button("Logout"):
+            st.session_state.is_admin = False
+            st.rerun()
 
 # ─── Snake Game Section ─────────────────────────────────────────────────────────
 st.markdown("---")
@@ -886,6 +805,97 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
+def display_analytics_dashboard():
+    """Display enhanced analytics dashboard"""
+    st.markdown("### Analytics Dashboard")
+    
+    # Display current session stats
+    st.subheader("Current Session")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Page Views", st.session_state.page_views)
+    with col2:
+        st.metric("Session Duration", f"{(time.time() - st.session_state.session_start) / 60:.1f} min")
+    with col3:
+        st.metric("Features Used", len(st.session_state.features_used))
+        
+    # Show features used
+    if st.session_state.features_used:
+        st.markdown("**Features Used This Session:**")
+        for feature in sorted(st.session_state.features_used):
+            st.markdown(f"- {feature}")
+    
+    # Enhanced Traffic Analysis
+    st.subheader("Traffic Analysis")
+    try:
+        analytics_file = ".private/analytics_data.json"
+        if os.path.exists(analytics_file):
+            with open(analytics_file, 'r') as f:
+                analytics_data = json.load(f)
+            
+            # Aggregate metrics
+            total_pageviews = sum(1 for entry in analytics_data)
+            unique_features = set()
+            feature_counts = {}
+            utm_sources = {}
+            utm_mediums = {}
+            utm_campaigns = {}
+            
+            for entry in analytics_data:
+                # UTM tracking
+                source = entry.get('utm_source', 'direct')
+                medium = entry.get('utm_medium', 'none')
+                campaign = entry.get('utm_campaign', 'none')
+                
+                utm_sources[source] = utm_sources.get(source, 0) + 1
+                utm_mediums[medium] = utm_mediums.get(medium, 0) + 1
+                utm_campaigns[campaign] = utm_campaigns.get(campaign, 0) + 1
+                
+                # Feature tracking
+                for feature in entry.get('features_used', []):
+                    unique_features.add(feature)
+                    feature_counts[feature] = feature_counts.get(feature, 0) + 1
+            
+            # Display overall stats
+            st.markdown("#### Overall Statistics")
+            stats_cols = st.columns(3)
+            with stats_cols[0]:
+                st.metric("Total Pageviews", total_pageviews)
+            with stats_cols[1]:
+                st.metric("Unique Features Used", len(unique_features))
+            with stats_cols[2]:
+                avg_session = sum(float(entry.get('session_duration', 0)) for entry in analytics_data) / len(analytics_data)
+                st.metric("Avg Session Duration", f"{avg_session/60:.1f} min")
+            
+            # Display feature popularity
+            if feature_counts:
+                st.markdown("#### Most Popular Features")
+                for feature, count in sorted(feature_counts.items(), key=lambda x: x[1], reverse=True):
+                    st.text(f"{feature}: {count} uses")
+            
+            # Traffic sources in columns
+            st.markdown("#### Traffic Sources")
+            source_cols = st.columns(3)
+            with source_cols[0]:
+                st.markdown("**Top Sources**")
+                for source, count in sorted(utm_sources.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    st.text(f"{source}: {count}")
+            with source_cols[1]:
+                st.markdown("**Top Mediums**")
+                for medium, count in sorted(utm_mediums.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    st.text(f"{medium}: {count}")
+            with source_cols[2]:
+                st.markdown("**Top Campaigns**")
+                for campaign, count in sorted(utm_campaigns.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    st.text(f"{campaign}: {count}")
+            
+            # Show raw data option
+            if st.checkbox("Show Raw Analytics Data"):
+                st.json(analytics_data)
+                
+    except Exception as e:
+        st.error(f"Error loading analytics data: {str(e)}")
 
 
 
