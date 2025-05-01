@@ -2,6 +2,98 @@ import random
 import streamlit as st
 from decimal import Decimal, getcontext, ROUND_HALF_UP
 from states import get_calculator, STATE_CALCULATORS
+import time
+from datetime import datetime
+import json
+import os
+import hashlib
+
+# ─── ANALYTICS SETUP ─────────────────────────────────────────────────────────────
+# Google Analytics 4 Measurement ID
+GA_TRACKING_ID = "G-68KQ82NWCK"  # User's GA4 tracking ID
+
+# Admin password hash - Replace with your own hashed password
+ADMIN_PASSWORD_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"  # Password: admin123
+
+def init_analytics():
+    """Initialize analytics tracking"""
+    if 'page_views' not in st.session_state:
+        st.session_state.page_views = 0
+    if 'last_updated' not in st.session_state:
+        st.session_state.last_updated = time.time()
+    if 'visitor_data' not in st.session_state:
+        st.session_state.visitor_data = []
+    if 'is_admin' not in st.session_state:
+        st.session_state.is_admin = False
+
+def verify_admin_password(password):
+    """Verify admin password using secure hash"""
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    return password_hash == ADMIN_PASSWORD_HASH
+
+def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
+    """Track page views and UTM parameters"""
+    st.session_state.page_views += 1
+    
+    # Get UTM parameters from URL if present
+    query_params = st.experimental_get_query_params()
+    utm_data = {
+        'utm_source': utm_source or query_params.get('utm_source', ['direct'])[0],
+        'utm_medium': utm_medium or query_params.get('utm_medium', ['none'])[0],
+        'utm_campaign': utm_campaign or query_params.get('utm_campaign', ['none'])[0],
+        'timestamp': datetime.now().isoformat(),
+        'page': 'paycheck_calculator'
+    }
+    
+    st.session_state.visitor_data.append(utm_data)
+    
+    # Save analytics data only if admin is logged in
+    if st.session_state.is_admin:
+        save_analytics_data(utm_data)
+
+def save_analytics_data(data):
+    """Save analytics data to a JSON file"""
+    if not st.session_state.is_admin:
+        return
+        
+    analytics_file = ".private/analytics_data.json"
+    try:
+        # Create private directory if it doesn't exist
+        os.makedirs(os.path.dirname(analytics_file), exist_ok=True)
+        
+        if os.path.exists(analytics_file):
+            with open(analytics_file, 'r') as f:
+                existing_data = json.load(f)
+        else:
+            existing_data = []
+            
+        existing_data.append(data)
+        
+        with open(analytics_file, 'w') as f:
+            json.dump(existing_data, f)
+    except Exception as e:
+        st.error(f"Error saving analytics data: {str(e)}")
+
+# Initialize analytics
+init_analytics()
+
+# Track pageview on app load
+track_pageview()
+
+# ─── Google Analytics 4 Tracking Code ─────────────────────────────────────────────
+ga_script = f"""
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={GA_TRACKING_ID}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){{dataLayer.push(arguments);}}
+  gtag('js', new Date());
+  gtag('config', '{GA_TRACKING_ID}');
+</script>
+"""
+
+# Inject GA4 tracking code
+st.markdown(ga_script, unsafe_allow_html=True)
 
 IRS_TRIVIA = [
     "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
@@ -638,6 +730,82 @@ if st.sidebar.checkbox("🔒 Show Feedback Log (admin)"):
             st.info("No feedback yet.")
     except FileNotFoundError:
         st.warning("No feedback log found.")
+
+# ─── Admin Analytics Dashboard ─────────────────────────────────────────────────
+st.markdown("---")
+with st.expander("🔒 Analytics Dashboard (Admin Only)", expanded=False):
+    if not st.session_state.is_admin:
+        admin_password = st.text_input("Enter admin password", type="password")
+        if st.button("Login"):
+            if verify_admin_password(admin_password):
+                st.session_state.is_admin = True
+                st.experimental_rerun()
+            else:
+                st.error("Invalid password")
+    else:
+        st.markdown("### Analytics Dashboard")
+        
+        # Display current session stats
+        st.subheader("Current Session")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Page Views", st.session_state.page_views)
+        with col2:
+            st.metric("Session Duration", f"{(time.time() - st.session_state.last_updated) / 60:.1f} min")
+        
+        # UTM Source Analysis
+        st.subheader("Traffic Sources")
+        try:
+            analytics_file = ".private/analytics_data.json"
+            if os.path.exists(analytics_file):
+                with open(analytics_file, 'r') as f:
+                    analytics_data = json.load(f)
+                
+                # Aggregate UTM data
+                utm_sources = {}
+                utm_mediums = {}
+                utm_campaigns = {}
+                
+                for entry in analytics_data:
+                    source = entry.get('utm_source', 'direct')
+                    medium = entry.get('utm_medium', 'none')
+                    campaign = entry.get('utm_campaign', 'none')
+                    
+                    utm_sources[source] = utm_sources.get(source, 0) + 1
+                    utm_mediums[medium] = utm_mediums.get(medium, 0) + 1
+                    utm_campaigns[campaign] = utm_campaigns.get(campaign, 0) + 1
+                
+                # Display traffic source breakdown
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown("**Top Sources**")
+                    for source, count in sorted(utm_sources.items(), key=lambda x: x[1], reverse=True)[:5]:
+                        st.text(f"{source}: {count}")
+                        
+                with col2:
+                    st.markdown("**Top Mediums**")
+                    for medium, count in sorted(utm_mediums.items(), key=lambda x: x[1], reverse=True)[:5]:
+                        st.text(f"{medium}: {count}")
+                        
+                with col3:
+                    st.markdown("**Top Campaigns**")
+                    for campaign, count in sorted(utm_campaigns.items(), key=lambda x: x[1], reverse=True)[:5]:
+                        st.text(f"{campaign}: {count}")
+                
+                # Show raw data in expandable section
+                with st.expander("View Raw Analytics Data"):
+                    st.json(analytics_data)
+                    
+                if st.button("Logout"):
+                    st.session_state.is_admin = False
+                    st.experimental_rerun()
+                    
+            else:
+                st.info("No analytics data available yet.")
+                
+        except Exception as e:
+            st.error(f"Error loading analytics data: {str(e)}")
 
 # ─── Snake Game Section ─────────────────────────────────────────────────────────
 st.markdown("---")
