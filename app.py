@@ -64,7 +64,8 @@ def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
     current_time = time.time()
     
     # Aggregate session data without personal identifiers
-   def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
+
+def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
     """Track page views and feature usage with privacy-friendly metrics"""
     st.session_state.page_views += 1
     current_time = time.time()
