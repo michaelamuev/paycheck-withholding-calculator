@@ -104,12 +104,45 @@ def snake_game():
                         // Clear previous interval if exists
                         if (gameInterval) clearInterval(gameInterval);
                         
-                        // Start game loop
-                        isGameActive = true;
-                        gameInterval = setInterval(gameLoop, 100);
+                        // Create countdown overlay
+                        const overlay = document.createElement('div');
+                        overlay.style.cssText = `
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            font-size: 48px;
+                            font-weight: bold;
+                            color: #2196F3;
+                            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                            z-index: 1000;
+                        `;
+                        canvas.parentElement.style.position = 'relative';
+                        canvas.parentElement.appendChild(overlay);
                         
-                        // Update score display
-                        scoreElement.textContent = `Score: ${{score}}`;
+                        // Start countdown
+                        let count = 3;
+                        overlay.textContent = count;
+                        
+                        const countdownInterval = setInterval(() => {{
+                            count--;
+                            if (count > 0) {{
+                                overlay.textContent = count;
+                            }} else if (count === 0) {{
+                                overlay.textContent = 'GO!';
+                            }} else {{
+                                clearInterval(countdownInterval);
+                                overlay.remove();
+                                
+                                // Start game loop
+                                isGameActive = true;
+                                gameInterval = setInterval(gameLoop, 100);
+                                
+                                // Update score display
+                                scoreElement.textContent = `Score: ${{score}}`;
+                            }}
+                        }}, 1000);
+                        
                     }} catch (error) {{
                         console.error('Error in startGame:', error);
                     }}
