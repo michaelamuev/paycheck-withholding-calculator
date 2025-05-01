@@ -36,6 +36,7 @@ def display_analytics_dashboard():
     st.markdown("### Analytics Dashboard")
     
     # Display current session stats
+    st.subheader("Current Session")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Page Views", st.session_state.page_views)
@@ -58,15 +59,29 @@ def display_analytics_dashboard():
             with open(analytics_file, 'r') as f:
                 analytics_data = json.load(f)
             
+            # Group by session_id for more accurate metrics
+            sessions = {}
+            for entry in analytics_data:
+                session_id = entry.get('session_id', 'unknown')
+                if session_id not in sessions:
+                    sessions[session_id] = entry
+                elif entry['session_duration'] > sessions[session_id]['session_duration']:
+                    # Keep the entry with the longest duration for each session
+                    sessions[session_id] = entry
+            
+            # Use session data for metrics
+            session_data = list(sessions.values())
+            
             # Aggregate metrics
-            total_pageviews = sum(1 for entry in analytics_data)
+            total_sessions = len(sessions)
+            total_pageviews = sum(entry.get('total_session_pageviews', 1) for entry in session_data)
             unique_features = set()
             feature_counts = {}
             utm_sources = {}
             utm_mediums = {}
             utm_campaigns = {}
             
-            for entry in analytics_data:
+            for entry in session_data:
                 # UTM tracking
                 source = entry.get('utm_source', 'direct')
                 medium = entry.get('utm_medium', 'none')
@@ -83,13 +98,15 @@ def display_analytics_dashboard():
             
             # Display overall stats
             st.markdown("#### Overall Statistics")
-            stats_cols = st.columns(3)
+            stats_cols = st.columns(4)
             with stats_cols[0]:
-                st.metric("Total Pageviews", total_pageviews)
+                st.metric("Total Sessions", total_sessions)
             with stats_cols[1]:
-                st.metric("Unique Features Used", len(unique_features))
+                st.metric("Total Pageviews", total_pageviews)
             with stats_cols[2]:
-                avg_session = sum(float(entry.get('session_duration', 0)) for entry in analytics_data) / len(analytics_data)
+                st.metric("Unique Features Used", len(unique_features))
+            with stats_cols[3]:
+                avg_session = sum(float(entry.get('session_duration', 0)) for entry in session_data) / len(session_data)
                 st.metric("Avg Session Duration", f"{avg_session/60:.1f} min")
             
             # Display feature popularity
@@ -104,19 +121,19 @@ def display_analytics_dashboard():
             with source_cols[0]:
                 st.markdown("**Top Sources**")
                 for source, count in sorted(utm_sources.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    st.text(f"{source}: {count}")
+                    st.text(f"{source}: {count} sessions")
             with source_cols[1]:
                 st.markdown("**Top Mediums**")
                 for medium, count in sorted(utm_mediums.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    st.text(f"{medium}: {count}")
+                    st.text(f"{medium}: {count} sessions")
             with source_cols[2]:
                 st.markdown("**Top Campaigns**")
                 for campaign, count in sorted(utm_campaigns.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    st.text(f"{campaign}: {count}")
+                    st.text(f"{campaign}: {count} sessions")
             
             # Show raw data option
             if st.checkbox("Show Raw Analytics Data"):
-                st.json(analytics_data)
+                st.json(session_data)  # Show deduplicated session data instead of raw data
                 
     except Exception as e:
         st.error(f"Error loading analytics data: {str(e)}")
@@ -155,6 +172,10 @@ def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
     st.session_state.last_track_time = current_time
     st.session_state.page_views += 1
     
+    # Generate a unique session ID if not exists
+    if 'session_id' not in st.session_state:
+        st.session_state.session_id = str(int(time.time()))
+    
     # Aggregate session data without personal identifiers
     session_data = {
         'timestamp': datetime.now().isoformat(),
@@ -162,11 +183,11 @@ def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
         'utm_medium': utm_medium or st.query_params.get('utm_medium', ['none'])[0],
         'utm_campaign': utm_campaign or st.query_params.get('utm_campaign', ['none'])[0],
         'session_duration': current_time - st.session_state.session_start,
-        'page': 'paycheck_calculator'
+        'session_id': st.session_state.session_id,
+        'page': 'paycheck_calculator',
+        'features_used': list(st.session_state.features_used),
+        'total_session_pageviews': st.session_state.page_views
     }
-    
-    st.session_state.visitor_data.append(session_data)
-    st.session_state.last_updated = current_time
     
     # Save analytics data only if admin is logged in
     if st.session_state.is_admin:
@@ -193,12 +214,12 @@ def save_analytics_data(data):
         else:
             existing_data = []
             
-        # Deduplication check - don't add if same timestamp exists
-        if not any(entry.get('timestamp') == data['timestamp'] for entry in existing_data):
-            # Add additional metrics
-            data['features_used'] = list(st.session_state.features_used)
-            data['total_session_pageviews'] = st.session_state.page_views
-            
+        # More robust deduplication: check timestamp AND session_id
+        if not any(
+            entry.get('timestamp') == data['timestamp'] and 
+            entry.get('session_id') == data.get('session_id')
+            for entry in existing_data
+        ):
             existing_data.append(data)
             
             with open(analytics_file, 'w') as f:
@@ -895,6 +916,7 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
 
 
 
