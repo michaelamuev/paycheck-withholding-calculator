@@ -155,11 +155,11 @@ def snake_game():
                     clearInterval(gameInterval);
                     
                     if (score > currentHighScore) {{
-                        const playerName = prompt(`🎮 BOOM! You just crushed the high score with ${score} points! \n\nWant to immortalize your victory? Drop your gamer tag, nickname, or any cool name below! \n(or just hit Cancel to stay mysterious 😎)`);
+                        const playerName = prompt(`🎮 BOOM! You just crushed the high score with ${{score}} points! \n\nWant to immortalize your victory? Drop your gamer tag, nickname, or any cool name below! \n(or just hit Cancel to stay mysterious 😎)`);
                         if (playerName) {{
                             // Update the high score display
                             currentHighScore = score;
-                            highScoreElement.textContent = `High Score: ${score} by ${playerName}`;
+                            highScoreElement.textContent = `High Score: ${{score}} by ${{playerName}}`;
                             
                             // Send the high score to the parent window
                             window.parent.postMessage({{
@@ -169,7 +169,7 @@ def snake_game():
                             }}, '*');
                         }}
                     }}
-                    alert(`Game Over! Score: ${score}`);
+                    alert(`Game Over! Score: ${{score}}`);
                 }}
 
                 // Handle keyboard input with error handling
