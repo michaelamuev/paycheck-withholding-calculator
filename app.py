@@ -795,7 +795,7 @@ with st.expander("🔒 Analytics Dashboard (Admin Only)", expanded=False):
                 
                 # Show raw data with a checkbox toggle
                 if st.checkbox("Show Raw Analytics Data"):
-                    st.markdown("#### Raw Analytics Data"
+                    st.markdown("#### Raw Analytics Data")
                     
                     st.json(analytics_data)
                     
