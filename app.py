@@ -31,6 +31,96 @@ GA_TRACKING_ID = "G-68KQ82NWCK"  # User's GA4 tracking ID
 # Admin password hash - Replace with your own hashed password
 ADMIN_PASSWORD_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"  # Password: admin123
 
+def display_analytics_dashboard():
+    """Display enhanced analytics dashboard"""
+    st.markdown("### Analytics Dashboard")
+    
+    # Display current session stats
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Page Views", st.session_state.page_views)
+    with col2:
+        st.metric("Session Duration", f"{(time.time() - st.session_state.session_start) / 60:.1f} min")
+    with col3:
+        st.metric("Features Used", len(st.session_state.features_used))
+        
+    # Show features used
+    if st.session_state.features_used:
+        st.markdown("**Features Used This Session:**")
+        for feature in sorted(st.session_state.features_used):
+            st.markdown(f"- {feature}")
+    
+    # Enhanced Traffic Analysis
+    st.subheader("Traffic Analysis")
+    try:
+        analytics_file = ".private/analytics_data.json"
+        if os.path.exists(analytics_file):
+            with open(analytics_file, 'r') as f:
+                analytics_data = json.load(f)
+            
+            # Aggregate metrics
+            total_pageviews = sum(1 for entry in analytics_data)
+            unique_features = set()
+            feature_counts = {}
+            utm_sources = {}
+            utm_mediums = {}
+            utm_campaigns = {}
+            
+            for entry in analytics_data:
+                # UTM tracking
+                source = entry.get('utm_source', 'direct')
+                medium = entry.get('utm_medium', 'none')
+                campaign = entry.get('utm_campaign', 'none')
+                
+                utm_sources[source] = utm_sources.get(source, 0) + 1
+                utm_mediums[medium] = utm_mediums.get(medium, 0) + 1
+                utm_campaigns[campaign] = utm_campaigns.get(campaign, 0) + 1
+                
+                # Feature tracking
+                for feature in entry.get('features_used', []):
+                    unique_features.add(feature)
+                    feature_counts[feature] = feature_counts.get(feature, 0) + 1
+            
+            # Display overall stats
+            st.markdown("#### Overall Statistics")
+            stats_cols = st.columns(3)
+            with stats_cols[0]:
+                st.metric("Total Pageviews", total_pageviews)
+            with stats_cols[1]:
+                st.metric("Unique Features Used", len(unique_features))
+            with stats_cols[2]:
+                avg_session = sum(float(entry.get('session_duration', 0)) for entry in analytics_data) / len(analytics_data)
+                st.metric("Avg Session Duration", f"{avg_session/60:.1f} min")
+            
+            # Display feature popularity
+            if feature_counts:
+                st.markdown("#### Most Popular Features")
+                for feature, count in sorted(feature_counts.items(), key=lambda x: x[1], reverse=True):
+                    st.text(f"{feature}: {count} uses")
+            
+            # Traffic sources in columns
+            st.markdown("#### Traffic Sources")
+            source_cols = st.columns(3)
+            with source_cols[0]:
+                st.markdown("**Top Sources**")
+                for source, count in sorted(utm_sources.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    st.text(f"{source}: {count}")
+            with source_cols[1]:
+                st.markdown("**Top Mediums**")
+                for medium, count in sorted(utm_mediums.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    st.text(f"{medium}: {count}")
+            with source_cols[2]:
+                st.markdown("**Top Campaigns**")
+                for campaign, count in sorted(utm_campaigns.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    st.text(f"{campaign}: {count}")
+            
+            # Show raw data option
+            if st.checkbox("Show Raw Analytics Data"):
+                st.json(analytics_data)
+                
+    except Exception as e:
+        st.error(f"Error loading analytics data: {str(e)}")
+
 def init_analytics():
     """Initialize analytics tracking with privacy-friendly session metrics"""
     # Basic session metrics
@@ -805,97 +895,6 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
-
-def display_analytics_dashboard():
-    """Display enhanced analytics dashboard"""
-    st.markdown("### Analytics Dashboard")
-    
-    # Display current session stats
-    st.subheader("Current Session")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Page Views", st.session_state.page_views)
-    with col2:
-        st.metric("Session Duration", f"{(time.time() - st.session_state.session_start) / 60:.1f} min")
-    with col3:
-        st.metric("Features Used", len(st.session_state.features_used))
-        
-    # Show features used
-    if st.session_state.features_used:
-        st.markdown("**Features Used This Session:**")
-        for feature in sorted(st.session_state.features_used):
-            st.markdown(f"- {feature}")
-    
-    # Enhanced Traffic Analysis
-    st.subheader("Traffic Analysis")
-    try:
-        analytics_file = ".private/analytics_data.json"
-        if os.path.exists(analytics_file):
-            with open(analytics_file, 'r') as f:
-                analytics_data = json.load(f)
-            
-            # Aggregate metrics
-            total_pageviews = sum(1 for entry in analytics_data)
-            unique_features = set()
-            feature_counts = {}
-            utm_sources = {}
-            utm_mediums = {}
-            utm_campaigns = {}
-            
-            for entry in analytics_data:
-                # UTM tracking
-                source = entry.get('utm_source', 'direct')
-                medium = entry.get('utm_medium', 'none')
-                campaign = entry.get('utm_campaign', 'none')
-                
-                utm_sources[source] = utm_sources.get(source, 0) + 1
-                utm_mediums[medium] = utm_mediums.get(medium, 0) + 1
-                utm_campaigns[campaign] = utm_campaigns.get(campaign, 0) + 1
-                
-                # Feature tracking
-                for feature in entry.get('features_used', []):
-                    unique_features.add(feature)
-                    feature_counts[feature] = feature_counts.get(feature, 0) + 1
-            
-            # Display overall stats
-            st.markdown("#### Overall Statistics")
-            stats_cols = st.columns(3)
-            with stats_cols[0]:
-                st.metric("Total Pageviews", total_pageviews)
-            with stats_cols[1]:
-                st.metric("Unique Features Used", len(unique_features))
-            with stats_cols[2]:
-                avg_session = sum(float(entry.get('session_duration', 0)) for entry in analytics_data) / len(analytics_data)
-                st.metric("Avg Session Duration", f"{avg_session/60:.1f} min")
-            
-            # Display feature popularity
-            if feature_counts:
-                st.markdown("#### Most Popular Features")
-                for feature, count in sorted(feature_counts.items(), key=lambda x: x[1], reverse=True):
-                    st.text(f"{feature}: {count} uses")
-            
-            # Traffic sources in columns
-            st.markdown("#### Traffic Sources")
-            source_cols = st.columns(3)
-            with source_cols[0]:
-                st.markdown("**Top Sources**")
-                for source, count in sorted(utm_sources.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    st.text(f"{source}: {count}")
-            with source_cols[1]:
-                st.markdown("**Top Mediums**")
-                for medium, count in sorted(utm_mediums.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    st.text(f"{medium}: {count}")
-            with source_cols[2]:
-                st.markdown("**Top Campaigns**")
-                for campaign, count in sorted(utm_campaigns.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    st.text(f"{campaign}: {count}")
-            
-            # Show raw data option
-            if st.checkbox("Show Raw Analytics Data"):
-                st.json(analytics_data)
-                
-    except Exception as e:
-        st.error(f"Error loading analytics data: {str(e)}")
 
 
 
