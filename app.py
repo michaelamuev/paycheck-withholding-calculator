@@ -79,7 +79,7 @@ def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
     # Save analytics data only if admin is logged in
     if st.session_state.is_admin:
         save_analytics_data(session_data)
-// ... existing code ...
+
     st.session_state.visitor_data.append(session_data)
     st.session_state.last_updated = current_time
     
