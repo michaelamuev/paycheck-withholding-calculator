@@ -3,6 +3,12 @@ import streamlit.components.v1 as components
 
 def snake_game():
     try:
+        # Initialize session state for high score if it doesn't exist
+        if 'high_score' not in st.session_state:
+            st.session_state.high_score = 0
+        if 'high_score_player' not in st.session_state:
+            st.session_state.high_score_player = "Anonymous"
+
         # CSS for the game canvas
         st.markdown("""
             <style>
@@ -16,37 +22,46 @@ def snake_game():
                     align-items: center;
                     margin: 20px 0;
                 }
+                .high-score {
+                    margin-top: 10px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #2196F3;
+                }
             </style>
         """, unsafe_allow_html=True)
 
         # JavaScript code for the Snake game
-        game_code = """
+        game_code = f"""
         <div class="game-container">
             <canvas id="snakeCanvas" width="400" height="400"></canvas>
             <p id="score">Score: 0</p>
+            <p id="highScore" class="high-score">High Score: {st.session_state.high_score} by {st.session_state.high_score_player}</p>
             <button onclick="startGame()">Start New Game</button>
         </div>
 
         <script>
-            try {
+            try {{
                 const canvas = document.getElementById('snakeCanvas');
                 const ctx = canvas.getContext('2d');
                 const scoreElement = document.getElementById('score');
+                const highScoreElement = document.getElementById('highScore');
                 const gridSize = 20;
                 const tileCount = canvas.width / gridSize;
                 
                 let snake = [];
-                let food = {};
+                let food = {{}};
                 let dx = gridSize;
                 let dy = 0;
                 let score = 0;
                 let gameInterval;
                 let isGameActive = false;
+                let currentHighScore = {st.session_state.high_score};
 
-                function startGame() {
-                    try {
+                function startGame() {{
+                    try {{
                         // Reset game state
-                        snake = [{x: 200, y: 200}];
+                        snake = [{{x: 200, y: 200}}];
                         score = 0;
                         dx = gridSize;
                         dy = 0;
@@ -60,127 +75,157 @@ def snake_game():
                         gameInterval = setInterval(gameLoop, 100);
                         
                         // Update score display
-                        scoreElement.textContent = `Score: ${score}`;
-                    } catch (error) {
+                        scoreElement.textContent = `Score: ${{score}}`;
+                    }} catch (error) {{
                         console.error('Error in startGame:', error);
-                    }
-                }
+                    }}
+                }}
 
-                function placeFood() {
-                    food = {
+                function placeFood() {{
+                    food = {{
                         x: Math.floor(Math.random() * tileCount) * gridSize,
                         y: Math.floor(Math.random() * tileCount) * gridSize
-                    };
-                }
+                    }};
+                }}
 
-                function gameLoop() {
-                    try {
+                function gameLoop() {{
+                    try {{
                         if (!isGameActive) return;
 
                         // Move snake
-                        const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+                        const head = {{x: snake[0].x + dx, y: snake[0].y + dy}};
                         
                         // Check wall collision
                         if (head.x < 0 || head.x >= canvas.width || 
-                            head.y < 0 || head.y >= canvas.height) {
+                            head.y < 0 || head.y >= canvas.height) {{
                             gameOver();
                             return;
-                        }
+                        }}
                         
                         // Check self collision
-                        for (let i = 0; i < snake.length; i++) {
-                            if (head.x === snake[i].x && head.y === snake[i].y) {
+                        for (let i = 0; i < snake.length; i++) {{
+                            if (head.x === snake[i].x && head.y === snake[i].y) {{
                                 gameOver();
                                 return;
-                            }
-                        }
+                            }}
+                        }}
                         
                         // Add new head
                         snake.unshift(head);
                         
                         // Check food collision
-                        if (head.x === food.x && head.y === food.y) {
+                        if (head.x === food.x && head.y === food.y) {{
                             score += 10;
-                            scoreElement.textContent = `Score: ${score}`;
+                            scoreElement.textContent = `Score: ${{score}}`;
                             placeFood();
-                        } else {
+                        }} else {{
                             snake.pop();
-                        }
+                        }}
                         
                         // Draw game
                         draw();
-                    } catch (error) {
+                    }} catch (error) {{
                         console.error('Error in gameLoop:', error);
                         gameOver();
-                    }
-                }
+                    }}
+                }}
 
-                function draw() {
-                    try {
+                function draw() {{
+                    try {{
                         // Clear canvas
                         ctx.fillStyle = '#f0f0f0';
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
                         
                         // Draw snake
                         ctx.fillStyle = '#4CAF50';
-                        snake.forEach(segment => {
+                        snake.forEach(segment => {{
                             ctx.fillRect(segment.x, segment.y, gridSize - 2, gridSize - 2);
-                        });
+                        }});
                         
                         // Draw food
                         ctx.fillStyle = '#FF5722';
                         ctx.fillRect(food.x, food.y, gridSize - 2, gridSize - 2);
-                    } catch (error) {
+                    }} catch (error) {{
                         console.error('Error in draw:', error);
-                    }
-                }
+                    }}
+                }}
 
-                function gameOver() {
+                function gameOver() {{
                     isGameActive = false;
                     clearInterval(gameInterval);
-                    alert(`Game Over! Score: ${score}`);
-                }
+                    
+                    if (score > currentHighScore) {{
+                        const playerName = prompt(`Congratulations! You've set a new high score of ${{score}}! Please enter your name:`);
+                        if (playerName) {{
+                            // Send the high score to Streamlit using custom event
+                            const event = new CustomEvent('newHighScore', {{ 
+                                detail: {{ score: score, player: playerName }}
+                            }});
+                            window.dispatchEvent(event);
+                            currentHighScore = score;
+                            highScoreElement.textContent = `High Score: ${{score}} by ${{playerName}}`;
+                        }}
+                    }}
+                    alert(`Game Over! Score: ${{score}}`);
+                }}
 
                 // Handle keyboard input with error handling
-                document.addEventListener('keydown', (e) => {
-                    try {
+                document.addEventListener('keydown', (e) => {{
+                    try {{
                         if (!isGameActive) return;
                         
                         // Prevent default arrow key behavior only when game is active
-                        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {{
                             e.preventDefault();
-                        }
+                        }}
                         
-                        switch(e.key) {
+                        switch(e.key) {{
                             case 'ArrowUp':
-                                if (dy === 0) { dx = 0; dy = -gridSize; }
+                                if (dy === 0) {{ dx = 0; dy = -gridSize; }}
                                 break;
                             case 'ArrowDown':
-                                if (dy === 0) { dx = 0; dy = gridSize; }
+                                if (dy === 0) {{ dx = 0; dy = gridSize; }}
                                 break;
                             case 'ArrowLeft':
-                                if (dx === 0) { dx = -gridSize; dy = 0; }
+                                if (dx === 0) {{ dx = -gridSize; dy = 0; }}
                                 break;
                             case 'ArrowRight':
-                                if (dx === 0) { dx = gridSize; dy = 0; }
+                                if (dx === 0) {{ dx = gridSize; dy = 0; }}
                                 break;
-                        }
-                    } catch (error) {
+                        }}
+                    }} catch (error) {{
                         console.error('Error in keydown handler:', error);
-                    }
-                });
+                    }}
+                }});
+
+                // Listen for high score updates from the game
+                window.addEventListener('newHighScore', function(e) {{
+                    const data = e.detail;
+                    // Send the high score data to Streamlit
+                    Streamlit.setComponentValue({{
+                        score: data.score,
+                        player: data.player
+                    }});
+                }});
 
                 // Initial setup
                 draw();
-            } catch (error) {
+            }} catch (error) {{
                 console.error('Error in game initialization:', error);
                 document.querySelector('.game-container').innerHTML = '<p style="color: red;">Unable to load game. Please refresh the page.</p>';
-            }
+            }}
         </script>
         """
         
-        # Render the game with proper height and width
-        components.html(game_code, height=600, width=450)
+        # Handle component value changes (high score updates)
+        component_value = components.html(game_code, height=600, width=450, key="snake_game")
+        
+        if component_value:
+            # Update session state with new high score
+            if component_value.get('score', 0) > st.session_state.high_score:
+                st.session_state.high_score = component_value['score']
+                st.session_state.high_score_player = component_value['player']
+                st.experimental_rerun()
         
     except Exception as e:
         st.error(f"Error loading snake game: {str(e)}")
