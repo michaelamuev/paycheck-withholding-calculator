@@ -58,15 +58,28 @@ def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
     current_time = time.time()
     
     # Aggregate session data without personal identifiers
+    def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
+    """Track page views and feature usage with privacy-friendly metrics"""
+    st.session_state.page_views += 1
+    current_time = time.time()
+    
+    # Aggregate session data without personal identifiers
     session_data = {
         'timestamp': datetime.now().isoformat(),
-        'utm_source': utm_source or query_params.get('utm_source', ['direct'])[0],
-        'utm_medium': utm_medium or query_params.get('utm_medium', ['none'])[0],
-        'utm_campaign': utm_campaign or query_params.get('utm_campaign', ['none'])[0],
+        'utm_source': utm_source or st.experimental_get_query_params().get('utm_source', ['direct'])[0],
+        'utm_medium': utm_medium or st.experimental_get_query_params().get('utm_medium', ['none'])[0],
+        'utm_campaign': utm_campaign or st.experimental_get_query_params().get('utm_campaign', ['none'])[0],
         'session_duration': current_time - st.session_state.session_start,
         'page': 'paycheck_calculator'
     }
     
+    st.session_state.visitor_data.append(session_data)
+    st.session_state.last_updated = current_time
+    
+    # Save analytics data only if admin is logged in
+    if st.session_state.is_admin:
+        save_analytics_data(session_data)
+// ... existing code ...
     st.session_state.visitor_data.append(session_data)
     st.session_state.last_updated = current_time
     
