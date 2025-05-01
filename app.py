@@ -32,13 +32,18 @@ GA_TRACKING_ID = "G-68KQ82NWCK"  # User's GA4 tracking ID
 ADMIN_PASSWORD_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"  # Password: admin123
 
 def init_analytics():
-    """Initialize analytics tracking"""
+    """Initialize analytics tracking with privacy-friendly session metrics"""
+    # Basic session metrics
     if 'page_views' not in st.session_state:
         st.session_state.page_views = 0
+    if 'session_start' not in st.session_state:
+        st.session_state.session_start = time.time()
     if 'last_updated' not in st.session_state:
         st.session_state.last_updated = time.time()
     if 'visitor_data' not in st.session_state:
         st.session_state.visitor_data = []
+    if 'features_used' not in st.session_state:
+        st.session_state.features_used = set()
     if 'is_admin' not in st.session_state:
         st.session_state.is_admin = False
 
@@ -48,24 +53,31 @@ def verify_admin_password(password):
     return password_hash == ADMIN_PASSWORD_HASH
 
 def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
-    """Track page views and UTM parameters"""
+    """Track page views and feature usage with privacy-friendly metrics"""
     st.session_state.page_views += 1
+    current_time = time.time()
     
-    # Get UTM parameters from URL if present
-    query_params = st.query_params
-    utm_data = {
+    # Aggregate session data without personal identifiers
+    session_data = {
+        'timestamp': datetime.now().isoformat(),
         'utm_source': utm_source or query_params.get('utm_source', ['direct'])[0],
         'utm_medium': utm_medium or query_params.get('utm_medium', ['none'])[0],
         'utm_campaign': utm_campaign or query_params.get('utm_campaign', ['none'])[0],
-        'timestamp': datetime.now().isoformat(),
+        'session_duration': current_time - st.session_state.session_start,
         'page': 'paycheck_calculator'
     }
     
-    st.session_state.visitor_data.append(utm_data)
+    st.session_state.visitor_data.append(session_data)
+    st.session_state.last_updated = current_time
     
     # Save analytics data only if admin is logged in
     if st.session_state.is_admin:
-        save_analytics_data(utm_data)
+        save_analytics_data(session_data)
+
+def track_feature_usage(feature_name: str):
+    """Track which calculator features are being used"""
+    if 'features_used' in st.session_state:
+        st.session_state.features_used.add(feature_name)
 
 def save_analytics_data(data):
     """Save analytics data to a JSON file"""
@@ -591,6 +603,16 @@ if st.sidebar.button("Calculate"):
     if gross_val > 250_000:
         st.error("who we lying to 👀")
         st.stop()
+        
+    # Track calculator usage
+    track_feature_usage('calculator')
+    if multi:
+        track_feature_usage('multiple_jobs')
+    if dep_credit > 0:
+        track_feature_usage('dependent_credits')
+    if selected_state != "None":
+        track_feature_usage(f'state_tax_{selected_state}')
+        
     # now the real work begins
     gross = Decimal(str(gross_val))
     dep_credit_dec = Decimal(str(dep_credit))
@@ -747,11 +769,19 @@ with st.expander("🔒 Analytics Dashboard (Admin Only)", expanded=False):
         
         # Display current session stats
         st.subheader("Current Session")
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Page Views", st.session_state.page_views)
         with col2:
-            st.metric("Session Duration", f"{(time.time() - st.session_state.last_updated) / 60:.1f} min")
+            st.metric("Session Duration", f"{(time.time() - st.session_state.session_start) / 60:.1f} min")
+        with col3:
+            st.metric("Features Used", len(st.session_state.features_used))
+            
+        # Show features used
+        if st.session_state.features_used:
+            st.markdown("**Features Used This Session:**")
+            for feature in sorted(st.session_state.features_used):
+                st.markdown(f"- {feature}")
         
         # UTM Source Analysis
         st.subheader("Traffic Sources")
@@ -796,7 +826,6 @@ with st.expander("🔒 Analytics Dashboard (Admin Only)", expanded=False):
                 # Show raw data with a checkbox toggle
                 if st.checkbox("Show Raw Analytics Data"):
                     st.markdown("#### Raw Analytics Data")
-                    
                     st.json(analytics_data)
                     
                 if st.button("Logout"):
