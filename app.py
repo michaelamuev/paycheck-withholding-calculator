@@ -62,15 +62,25 @@ def display_analytics_dashboard():
             # Group by session_id for more accurate metrics
             sessions = {}
             for entry in analytics_data:
-                session_id = entry.get('session_id', 'unknown')
+                # Handle legacy entries without session_id
+                session_id = entry.get('session_id', entry.get('timestamp', 'unknown'))
+                
+                # Skip entries without required fields
+                if not all(key in entry for key in ['timestamp', 'utm_source']):
+                    continue
+                    
                 if session_id not in sessions:
                     sessions[session_id] = entry
-                elif entry['session_duration'] > sessions[session_id]['session_duration']:
+                elif entry.get('session_duration', 0) > sessions[session_id].get('session_duration', 0):
                     # Keep the entry with the longest duration for each session
                     sessions[session_id] = entry
             
             # Use session data for metrics
             session_data = list(sessions.values())
+            
+            if not session_data:
+                st.info("No analytics data available yet.")
+                return
             
             # Aggregate metrics
             total_sessions = len(sessions)
@@ -82,7 +92,7 @@ def display_analytics_dashboard():
             utm_campaigns = {}
             
             for entry in session_data:
-                # UTM tracking
+                # UTM tracking (with defaults)
                 source = entry.get('utm_source', 'direct')
                 medium = entry.get('utm_medium', 'none')
                 campaign = entry.get('utm_campaign', 'none')
@@ -106,8 +116,13 @@ def display_analytics_dashboard():
             with stats_cols[2]:
                 st.metric("Unique Features Used", len(unique_features))
             with stats_cols[3]:
-                avg_session = sum(float(entry.get('session_duration', 0)) for entry in session_data) / len(session_data)
-                st.metric("Avg Session Duration", f"{avg_session/60:.1f} min")
+                # Calculate average session duration with error handling
+                valid_durations = [float(entry.get('session_duration', 0)) for entry in session_data if entry.get('session_duration', 0) > 0]
+                if valid_durations:
+                    avg_session = sum(valid_durations) / len(valid_durations)
+                    st.metric("Avg Session Duration", f"{avg_session/60:.1f} min")
+                else:
+                    st.metric("Avg Session Duration", "N/A")
             
             # Display feature popularity
             if feature_counts:
@@ -137,6 +152,7 @@ def display_analytics_dashboard():
                 
     except Exception as e:
         st.error(f"Error loading analytics data: {str(e)}")
+        st.exception(e)  # This will show the full traceback in development
 
 def init_analytics():
     """Initialize analytics tracking with privacy-friendly session metrics"""
@@ -916,6 +932,7 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
 
 
 
