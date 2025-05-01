@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import os
 import hashlib
+import uuid
 
 # ─── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -14,6 +15,128 @@ st.set_page_config(
     page_icon="💸",
     layout="wide"
 )
+
+# Custom CSS for better styling
+st.markdown("""
+    <style>
+        /* Main container styling */
+        .main {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Header styling */
+        h1 {
+            color: #1E88E5;
+            font-size: 2.5rem !important;
+            font-weight: 700 !important;
+            margin-bottom: 1.5rem !important;
+            text-align: center;
+            padding: 1rem;
+            background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Tip of the day styling */
+        .stInfo {
+            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%) !important;
+            padding: 1rem !important;
+            border-radius: 10px !important;
+            border: none !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        }
+        
+        /* Warning/disclaimer styling */
+        .stWarning {
+            background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%) !important;
+            padding: 1rem !important;
+            border-radius: 10px !important;
+            border: none !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        }
+        
+        /* Sidebar styling */
+        .css-1d391kg {
+            background: linear-gradient(180deg, #F5F5F5 0%, #E0E0E0 100%);
+            padding: 2rem 1rem;
+        }
+        
+        /* Input fields styling */
+        .stTextInput > div > div {
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #E0E0E0;
+            padding: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .stTextInput > div > div:focus-within {
+            border-color: #1E88E5;
+            box-shadow: 0 0 0 2px rgba(30,136,229,0.2);
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            background: linear-gradient(135deg, #1E88E5 0%, #1976D2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* Metric containers styling */
+        [data-testid="stMetricValue"] {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 1.5rem !important;
+            font-weight: 700 !important;
+            color: #1E88E5;
+        }
+        
+        /* Expander styling */
+        .streamlit-expanderHeader {
+            background: linear-gradient(135deg, #F5F5F5 0%, #E0E0E0 100%);
+            border-radius: 8px;
+            padding: 1rem !important;
+            font-weight: 600;
+        }
+        
+        /* Select box styling */
+        .stSelectbox > div > div {
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #E0E0E0;
+        }
+        
+        /* Radio buttons styling */
+        .stRadio > div {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Checkbox styling */
+        .stCheckbox > div > label > div {
+            background: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 IRS_TRIVIA = [
     "Did you know? The new 2024 W-4 no longer uses withholding allowances — you enter dollar amounts instead.",
@@ -155,89 +278,75 @@ def display_analytics_dashboard():
         st.exception(e)  # This will show the full traceback in development
 
 def init_analytics():
-    """Initialize analytics tracking with privacy-friendly session metrics"""
-    # Basic session metrics
-    if 'page_views' not in st.session_state:
-        st.session_state.page_views = 0
+    """Initialize analytics with improved visitor tracking"""
+    if 'visitor_id' not in st.session_state:
+        st.session_state.visitor_id = str(uuid.uuid4())
+    if 'session_id' not in st.session_state:
+        st.session_state.session_id = str(uuid.uuid4())
     if 'session_start' not in st.session_state:
         st.session_state.session_start = time.time()
-    if 'last_updated' not in st.session_state:
-        st.session_state.last_updated = time.time()
-    if 'visitor_data' not in st.session_state:
-        st.session_state.visitor_data = []
+    if 'page_views' not in st.session_state:
+        st.session_state.page_views = 0
     if 'features_used' not in st.session_state:
         st.session_state.features_used = set()
+    if 'last_activity' not in st.session_state:
+        st.session_state.last_activity = time.time()
     if 'is_admin' not in st.session_state:
         st.session_state.is_admin = False
 
 def verify_admin_password(password):
     """Verify admin password using secure hash"""
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    return password_hash == ADMIN_PASSWORD_HASH
+    return hashlib.sha256(password.encode()).hexdigest() == ADMIN_PASSWORD_HASH
 
-def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
-    """Track page views and feature usage with privacy-friendly metrics"""
-    # Add deduplication check
+def track_pageview(utm_params=None):
+    """Track pageviews with UTM parameters and deduplication"""
     current_time = time.time()
-    last_track_time = getattr(st.session_state, 'last_track_time', 0)
-    
-    # Only track if more than 1 second has passed since last track
-    if current_time - last_track_time < 1:
+    if current_time - getattr(st.session_state, 'last_track_time', 0) < 1:
         return
         
     st.session_state.last_track_time = current_time
     st.session_state.page_views += 1
     
-    # Generate a unique session ID if not exists
-    if 'session_id' not in st.session_state:
-        st.session_state.session_id = str(int(time.time()))
-    
-    # Aggregate session data without personal identifiers
-    session_data = {
+    analytics_data = {
         'timestamp': datetime.now().isoformat(),
-        'utm_source': utm_source or st.query_params.get('utm_source', ['direct'])[0],
-        'utm_medium': utm_medium or st.query_params.get('utm_medium', ['none'])[0],
-        'utm_campaign': utm_campaign or st.query_params.get('utm_campaign', ['none'])[0],
-        'session_duration': current_time - st.session_state.session_start,
+        'visitor_id': st.session_state.visitor_id,
         'session_id': st.session_state.session_id,
-        'page': 'paycheck_calculator',
+        'session_duration': current_time - st.session_state.session_start,
+        'page_views': st.session_state.page_views,
         'features_used': list(st.session_state.features_used),
-        'total_session_pageviews': st.session_state.page_views
+        'utm_source': utm_params.get('source', 'direct') if utm_params else 'direct',
+        'utm_medium': utm_params.get('medium', 'none') if utm_params else 'none',
+        'utm_campaign': utm_params.get('campaign', 'none') if utm_params else 'none'
     }
     
-    # Save analytics data only if admin is logged in
     if st.session_state.is_admin:
-        save_analytics_data(session_data)
+        save_analytics_data(analytics_data)
 
 def track_feature_usage(feature_name: str):
-    """Track which calculator features are being used"""
-    if 'features_used' in st.session_state:
+    """Track feature usage with timestamps"""
+    if feature_name not in st.session_state.features_used:
         st.session_state.features_used.add(feature_name)
+        st.session_state.last_activity = time.time()
+        track_pageview()  # Update analytics on new feature use
 
 def save_analytics_data(data):
-    """Save analytics data to a JSON file with deduplication"""
-    if not st.session_state.is_admin:
-        return
-        
-    analytics_file = ".private/analytics_data.json"
+    """Save analytics data with deduplication"""
     try:
-        # Create private directory if it doesn't exist
+        analytics_file = ".private/analytics_data.json"
         os.makedirs(os.path.dirname(analytics_file), exist_ok=True)
         
+        existing_data = []
         if os.path.exists(analytics_file):
             with open(analytics_file, 'r') as f:
                 existing_data = json.load(f)
-        else:
-            existing_data = []
-            
-        # More robust deduplication: check timestamp AND session_id
+        
+        # Deduplicate based on session_id and timestamp
         if not any(
-            entry.get('timestamp') == data['timestamp'] and 
-            entry.get('session_id') == data.get('session_id')
+            entry.get('session_id') == data['session_id'] and
+            entry.get('timestamp') == data['timestamp']
             for entry in existing_data
         ):
             existing_data.append(data)
-            
             with open(analytics_file, 'w') as f:
                 json.dump(existing_data, f, indent=2)
     except Exception as e:
@@ -932,9 +1041,5 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
-
-
-
-
 
 
