@@ -43,7 +43,7 @@ def track_pageview(utm_source=None, utm_medium=None, utm_campaign=None):
     st.session_state.page_views += 1
     
     # Get UTM parameters from URL if present
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     utm_data = {
         'utm_source': utm_source or query_params.get('utm_source', ['direct'])[0],
         'utm_medium': utm_medium or query_params.get('utm_medium', ['none'])[0],
