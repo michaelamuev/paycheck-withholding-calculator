@@ -184,6 +184,20 @@ def snake_game():
                     }}
                 }}
 
+                // Function to update high score in Streamlit
+                function updateHighScore(score, player) {{
+                    const data = {{
+                        score: score,
+                        player: player
+                    }};
+                    
+                    // Send data to Python backend using window.parent
+                    window.parent.postMessage({{
+                        type: 'streamlit:message',
+                        data: data
+                    }}, '*');
+                }}
+
                 function gameOver() {{
                     isGameActive = false;
                     clearInterval(gameInterval);
@@ -196,16 +210,13 @@ def snake_game():
                         currentHighScore = score;
                         highScoreElement.textContent = `High Score: ${{score}} by ${{finalName}}`;
                         
-                        // Send the high score to Streamlit
-                        window.parent.postMessage({{
-                            type: 'streamlit:setComponentValue',
-                            data: {{
-                                new_high_score: {{
-                                    score: score,
-                                    player: finalName
-                                }}
-                            }}
-                        }}, '*');
+                        // Update high score in Streamlit
+                        updateHighScore(score, finalName);
+                        
+                        // Force page reload to update the high score
+                        setTimeout(() => {{
+                            window.parent.location.reload();
+                        }}, 1000);
                     }}
                     alert(`Game Over! Score: ${{score}}`);
                 }}
@@ -248,8 +259,17 @@ def snake_game():
         </script>
         """
         
-        # Render the game with a key for proper component communication
-        components.html(game_code, height=600, width=450, key="snake_game")
+        # Render the game without the key parameter
+        components.html(game_code, height=600, width=450)
+        
+        # Handle high score updates
+        if st.session_state.get('streamlit_message'):
+            data = st.session_state.streamlit_message
+            if data.get('score', 0) > st.session_state.high_score:
+                st.session_state.high_score = data['score']
+                st.session_state.high_score_player = data['player']
+                save_high_score(data['score'], data['player'])
+            del st.session_state.streamlit_message
         
     except Exception as e:
         st.error(f"Error loading snake game: {str(e)}")
