@@ -157,13 +157,16 @@ def snake_game():
                     if (score > currentHighScore) {{
                         const playerName = prompt(`Congratulations! You've set a new high score of ${{score}}! Please enter your name:`);
                         if (playerName) {{
-                            // Send the high score to Streamlit using custom event
-                            const event = new CustomEvent('newHighScore', {{ 
-                                detail: {{ score: score, player: playerName }}
-                            }});
-                            window.dispatchEvent(event);
+                            // Update the high score display
                             currentHighScore = score;
                             highScoreElement.textContent = `High Score: ${{score}} by ${{playerName}}`;
+                            
+                            // Send the high score to the parent window
+                            window.parent.postMessage({{
+                                type: 'newHighScore',
+                                score: score,
+                                player: playerName
+                            }}, '*');
                         }}
                     }}
                     alert(`Game Over! Score: ${{score}}`);
@@ -198,16 +201,6 @@ def snake_game():
                     }}
                 }});
 
-                // Listen for high score updates from the game
-                window.addEventListener('newHighScore', function(e) {{
-                    const data = e.detail;
-                    // Send the high score data to Streamlit
-                    Streamlit.setComponentValue({{
-                        score: data.score,
-                        player: data.player
-                    }});
-                }});
-
                 // Initial setup
                 draw();
             }} catch (error) {{
@@ -217,15 +210,18 @@ def snake_game():
         </script>
         """
         
-        # Handle component value changes (high score updates)
-        component_value = components.html(game_code, height=600, width=450, key="snake_game")
+        # Create a unique key for the component
+        component_id = "snake_game_component"
         
-        if component_value:
-            # Update session state with new high score
-            if component_value.get('score', 0) > st.session_state.high_score:
-                st.session_state.high_score = component_value['score']
-                st.session_state.high_score_player = component_value['player']
-                st.experimental_rerun()
+        # Render the game
+        components.html(game_code, height=600, width=450)
+        
+        # Handle high score updates through Streamlit's session state
+        if st.session_state.get('new_high_score'):
+            st.session_state.high_score = st.session_state.new_high_score['score']
+            st.session_state.high_score_player = st.session_state.new_high_score['player']
+            del st.session_state.new_high_score
+            st.experimental_rerun()
         
     except Exception as e:
         st.error(f"Error loading snake game: {str(e)}")
