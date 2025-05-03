@@ -217,41 +217,19 @@ def snake_game():
                     }}
                 }}
 
-                // Function to update high score in Streamlit
-                function updateHighScore(score, player) {{
-                    const data = {{
-                        score: score,
-                        player: player
-                    }};
-                    
-                    // Send data to Python backend using window.parent
-                    window.parent.postMessage({{
-                        type: 'streamlit:message',
-                        data: data
-                    }}, '*');
-                }}
-
                 function gameOver() {{
                     isGameActive = false;
                     clearInterval(gameInterval);
                     
                     if (score > currentHighScore) {{
-                        const playerName = prompt(`🎮 BOOM! You just crushed the high score with ${{score}} points! \n\nWant to immortalize your victory? Drop your gamer tag, nickname, or any cool name below! \n(or just hit Cancel to stay mysterious 😎)`);
-                        const finalName = playerName || 'Anonymous';
+                        alert(`🎉 Congratulations! You've set a high score of ${{score}}!\n\n😅 However, since this site doesn't use cookies or save your history, this glory is fleeting.`);
                         
                         // Update the high score display
                         currentHighScore = score;
-                        highScoreElement.textContent = `High Score: ${{score}} by ${{finalName}}`;
-                        
-                        // Update high score in Streamlit
-                        updateHighScore(score, finalName);
-                        
-                        // Force page reload to update the high score
-                        setTimeout(() => {{
-                            window.parent.location.reload();
-                        }}, 1000);
+                        highScoreElement.textContent = `High Score: ${{score}} (This Session Only)`;
+                    }} else {{
+                        alert(`Game Over! Score: ${{score}}`);
                     }}
-                    alert(`Game Over! Score: ${{score}}`);
                 }}
 
                 // Handle keyboard input with error handling
