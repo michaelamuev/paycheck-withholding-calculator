@@ -1,47 +1,13 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json
-import os
-
-def load_high_score():
-    """Load high score from file"""
-    try:
-        if os.path.exists('high_score.json'):
-            with open('high_score.json', 'r') as f:
-                data = json.load(f)
-                return data.get('score', 0), data.get('player', 'Anonymous')
-    except Exception as e:
-        print(f"Error loading high score: {e}")
-    return 0, 'Anonymous'
-
-def save_high_score(score, player):
-    """Save high score to file"""
-    try:
-        with open('high_score.json', 'w') as f:
-            json.dump({'score': score, 'player': player}, f)
-    except Exception as e:
-        print(f"Error saving high score: {e}")
 
 def snake_game():
     try:
-        # Load high score from file
-        high_score, high_score_player = load_high_score()
-        
         # Initialize session state for high score if it doesn't exist
         if 'high_score' not in st.session_state:
-            st.session_state.high_score = high_score
+            st.session_state.high_score = 0
         if 'high_score_player' not in st.session_state:
-            st.session_state.high_score_player = high_score_player
-
-        # Handle high score updates from JavaScript
-        if 'new_high_score' in st.session_state:
-            score = st.session_state.new_high_score['score']
-            player = st.session_state.new_high_score['player']
-            if score > st.session_state.high_score:
-                st.session_state.high_score = score
-                st.session_state.high_score_player = player
-                save_high_score(score, player)
-            del st.session_state.new_high_score
+            st.session_state.high_score_player = 'This Session'
 
         # CSS for the game canvas
         st.markdown("""
@@ -70,7 +36,7 @@ def snake_game():
         <div class="game-container">
             <canvas id="snakeCanvas" width="400" height="400"></canvas>
             <p id="score">Score: 0</p>
-            <p id="highScore" class="high-score">High Score: {st.session_state.high_score} by {st.session_state.high_score_player}</p>
+            <p id="highScore" class="high-score">High Score: {st.session_state.high_score} (This Session Only)</p>
             <button onclick="startGame()">Start New Game</button>
         </div>
 
@@ -222,7 +188,7 @@ def snake_game():
                     clearInterval(gameInterval);
                     
                     if (score > currentHighScore) {{
-                        alert(`🎉 Congratulations! You've set a high score of ${{score}}!\n\n😅 However, since this site doesn't use cookies or save your history, this glory is fleeting.`);
+                        alert(`🎉 Congratulations! You've set a new session high score of ${{score}}!\n\n😅 Note: Since this site doesn't use cookies or save browser data to protect your privacy, this high score will only last for your current session.`);
                         
                         // Update the high score display
                         currentHighScore = score;
@@ -279,7 +245,6 @@ def snake_game():
             if data.get('score', 0) > st.session_state.high_score:
                 st.session_state.high_score = data['score']
                 st.session_state.high_score_player = data['player']
-                save_high_score(data['score'], data['player'])
             del st.session_state.streamlit_message
         
     except Exception as e:
