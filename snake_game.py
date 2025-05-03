@@ -188,11 +188,16 @@ def snake_game():
                     clearInterval(gameInterval);
                     
                     if (score > currentHighScore) {{
-                        alert(`🎉 Congratulations! You've set a new session high score of ${{score}}!\n\n😅 Note: Since this site doesn't use cookies or save browser data to protect your privacy, this high score will only last for your current session.`);
+                        const playerName = prompt(
+                            `🎮 BOOM! You just crushed the high score with ${{score}} points!\n\n` + 
+                            `Want to immortalize your victory *just for this session*? Drop your gamer tag, nickname, or any cool name below.\n` + 
+                            `(It won't be saved beyond this game — no cookies or browser data here!)`
+                        );
+                        const finalName = playerName || 'Anonymous';
                         
                         // Update the high score display
                         currentHighScore = score;
-                        highScoreElement.textContent = `High Score: ${{score}} (This Session Only)`;
+                        highScoreElement.textContent = `High Score: ${{score}} by ${{finalName}} (This Session Only)`;
                     }} else {{
                         alert(`Game Over! Score: ${{score}}`);
                     }}
