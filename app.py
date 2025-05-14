@@ -9,6 +9,29 @@ import os
 import hashlib
 import uuid
 
+def formatted_currency_input(label, default_value="0.00", key=None, help=None):
+    def format_input():
+        raw = st.session_state[key].replace(",", "")
+        try:
+            if "." in raw:
+                integer_part, decimal_part = raw.split(".")
+                decimal_part = decimal_part[:2]  # Limit to 2 decimals
+                num = float(f"{integer_part}.{decimal_part}")
+            else:
+                num = float(raw)
+            formatted = f"{num:,.2f}"
+            st.session_state[key] = formatted
+        except:
+            pass  # do nothing if invalid input
+
+    return st.sidebar.text_input(
+        label=label,
+        value=default_value,
+        key=key,
+        on_change=format_input,
+        help=help
+    )
+
 # ─── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="2024 Withholding (Pub 15-T)",
@@ -773,21 +796,23 @@ mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
 if annual:
-    gross_input = formatted_number_input(
+    gross_input = formatted_currency_input(
         "Annual Gross Salary ($)",
-        "60000.00",
-        help="Enter your annual gross salary (numbers only)"
+        default_value="60,000.00",
+        key="annual_gross",
+        help="Enter your annual gross salary"
     )
 else:
-    gross_input = formatted_number_input(
+    gross_input = formatted_currency_input(
         "Gross Amount per Paycheck ($)",
-        "1000.00",
-        help="Enter your gross pay per paycheck (numbers only)"
+        default_value="1,000.00",
+        key="paycheck_gross",
+        help="Enter your gross pay per paycheck"
     )
 
 # Convert input to float, with error handling
 try:
-    gross_val = float(gross_input.replace(',', '').strip())
+    gross_val = float(gross_input.replace(",", "").strip())
     if gross_val < 0:
         st.sidebar.error("Gross amount cannot be negative")
         gross_val = 0
@@ -1091,6 +1116,7 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
 
 
 
