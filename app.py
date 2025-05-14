@@ -725,9 +725,7 @@ annual = mode == "Full Year"
 def format_number(value):
     """Format a number with commas for display"""
     try:
-        # Remove existing commas and convert to float
         num = float(str(value).replace(',', ''))
-        # Format with commas and 2 decimal places
         return f"{num:,.2f}"
     except:
         return value
@@ -748,7 +746,6 @@ else:
 # Convert input to float, with error handling
 try:
     gross_val = float(gross_input.replace(',', '').strip())
-    # Format the display value with commas
     st.sidebar.text(f"Entered amount: ${format_number(gross_val)}")
     if gross_val < 0:
         st.sidebar.error("Gross amount cannot be negative")
@@ -820,12 +817,9 @@ except ValueError:
     st.sidebar.error("Please enter a valid number for dependent credits")
     dep_credit = 0
 
-oth = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", 
-    value=0.0, step=100.0, format="%,.2f")))
-ded = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", 
-    value=0.0, step=100.0, format="%,.2f")))
-extra = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", 
-    value=0.0, step=5.0, format="%,.2f")))
+oth = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", value=0.0, step=100.0)))
+ded = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", value=0.0, step=100.0)))
+extra = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", value=0.0, step=5.0)))
 
 # Filing status must match lowercase keys:
 filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
@@ -1056,4 +1050,7 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
+
+
 
