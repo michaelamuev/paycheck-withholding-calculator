@@ -723,16 +723,13 @@ st.sidebar.title("Inputs")
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
-def format_currency_input(label: str, min_value: float = 0.0, value: float = 0.0, step: float = 0.01, help: str = None, use_sidebar: bool = False) -> float:
+def format_currency_input(label: str, min_value: float = 0.0, value: float = 0.0, step: float = 0.01, help: str = None) -> float:
     """Custom currency input that enforces 2 decimal places and adds commas."""
     # Format the default value with commas and 2 decimal places
     formatted_value = f"{value:,.2f}"
     
-    # Choose between sidebar and main area
-    input_container = st.sidebar if use_sidebar else st
-    
     # Create text input for currency
-    input_value = input_container.text_input(
+    input_value = st.text_input(
         label,
         value=formatted_value,
         help=help,
@@ -752,11 +749,11 @@ def format_currency_input(label: str, min_value: float = 0.0, value: float = 0.0
         # Convert to float and validate range
         result = float(cleaned_value)
         if result < min_value:
-            input_container.error(f"Value cannot be less than {min_value:,.2f}")
+            st.error(f"Value cannot be less than {min_value:,.2f}")
             return min_value
         return result
     except ValueError:
-        input_container.error("Please enter a valid number")
+        st.error("Please enter a valid number")
         return value
 
 if annual:
@@ -764,16 +761,14 @@ if annual:
         "Annual Gross Salary ($)",
         min_value=0.0,
         value=60000.00,
-        help="Enter your annual gross salary",
-        use_sidebar=True
+        help="Enter your annual gross salary"
     )
 else:
     gross_val = format_currency_input(
         "Gross Amount per Paycheck ($)",
         min_value=0.0,
         value=1000.00,
-        help="Enter your gross pay per paycheck",
-        use_sidebar=True
+        help="Enter your gross pay per paycheck"
     )
 
 # Remove the try/except block since number_input handles validation
@@ -804,8 +799,7 @@ if multi:
             "Annual salary of other job ($)",
             min_value=0.0,
             value=0.00,
-            help="Enter the annual salary of the other job",
-            use_sidebar=True
+            help="Enter the annual salary of the other job"
         )
     else:  # Three or more jobs
         st.sidebar.markdown("""
@@ -825,17 +819,13 @@ dep_credit = format_currency_input(
     "Total Dependent Credits ($)",
     min_value=0.0,
     value=0.00,
-    help="Enter total dependent credits",
-    use_sidebar=True
+    help="Enter total dependent credits"
 )
 
 # Update other inputs to use the same format
-oth = format_currency_input("Step 4(a): Other income ($)", 
-    min_value=0.0, value=0.0, step=100.0, use_sidebar=True)
-ded = format_currency_input("Step 4(b): Deductions over standard ($)", 
-    min_value=0.0, value=0.0, step=100.0, use_sidebar=True)
-extra = format_currency_input("Step 4(c): Extra withholding per period ($)", 
-    min_value=0.0, value=0.0, step=5.0, use_sidebar=True)
+oth = format_currency_input("Step 4(a): Other income ($)", min_value=0.0, value=0.0, step=100.0)
+ded = format_currency_input("Step 4(b): Deductions over standard ($)", min_value=0.0, value=0.0, step=100.0)
+extra = format_currency_input("Step 4(c): Extra withholding per period ($)", min_value=0.0, value=0.0, step=5.0)
 
 # Filing status must match lowercase keys:
 filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
@@ -1071,7 +1061,6 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
-
 
 
 
