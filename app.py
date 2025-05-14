@@ -736,7 +736,7 @@ if annual:
         min_value=0.0,
         value=60000.00,
         step=0.01,
-        format=",.2f",
+        format="%0.2f",
         help="Enter your annual gross salary"
     )
 else:
@@ -745,7 +745,7 @@ else:
         min_value=0.0,
         value=1000.00,
         step=0.01,
-        format=",.2f",
+        format="%0.2f",
         help="Enter your gross pay per paycheck"
     )
 
@@ -806,17 +806,17 @@ dep_credit = st.sidebar.number_input(
     min_value=0.0,
     value=0.00,
     step=0.01,
-    format=",.2f",
+    format="%0.2f",
     help="Enter total dependent credits"
 )
 
 # Update other inputs to use the same format
 oth = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", 
-    min_value=0.0, value=0.0, step=100.0, format=",.2f")))
+    min_value=0.0, value=0.0, step=100.0, format="%0.2f")))
 ded = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", 
-    min_value=0.0, value=0.0, step=100.0, format=",.2f")))
+    min_value=0.0, value=0.0, step=100.0, format="%0.2f")))
 extra = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", 
-    min_value=0.0, value=0.0, step=5.0, format=",.2f")))
+    min_value=0.0, value=0.0, step=5.0, format="%0.2f")))
 
 # Filing status must match lowercase keys:
 filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
@@ -1047,6 +1047,7 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
 
 
 
