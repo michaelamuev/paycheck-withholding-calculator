@@ -731,27 +731,27 @@ def format_number(value):
         return value
 
 if annual:
-    gross_input = st.sidebar.text_input(
+    gross_val = st.sidebar.number_input(
         "Annual Gross Salary ($)",
-        value=format_number(60000.00),
-        help="Enter your annual gross salary (numbers only)"
+        min_value=0.0,
+        value=60000.00,
+        step=0.01,
+        format=",.2f",
+        help="Enter your annual gross salary"
     )
 else:
-    gross_input = st.sidebar.text_input(
+    gross_val = st.sidebar.number_input(
         "Gross Amount per Paycheck ($)",
-        value=format_number(1000.00),
-        help="Enter your gross pay per paycheck (numbers only)"
+        min_value=0.0,
+        value=1000.00,
+        step=0.01,
+        format=",.2f",
+        help="Enter your gross pay per paycheck"
     )
 
-# Convert input to float, with error handling
-try:
-    gross_val = float(gross_input.replace(',', '').strip())
-    st.sidebar.text(f"Entered amount: ${format_number(gross_val)}")
-    if gross_val < 0:
-        st.sidebar.error("Gross amount cannot be negative")
-        gross_val = 0
-except ValueError:
-    st.sidebar.error("Please enter a valid number")
+# Remove the try/except block since number_input handles validation
+if gross_val < 0:
+    st.sidebar.error("Gross amount cannot be negative")
     gross_val = 0
 
 period = st.sidebar.selectbox("Pay Frequency", ["weekly","biweekly","semimonthly","monthly"])
@@ -801,25 +801,22 @@ st.sidebar.markdown("""
     - $2,000 per qualifying child under 17
     - $1,500 per dependent 17 and older
 """)
-dep_credit_input = st.sidebar.text_input(
+dep_credit = st.sidebar.number_input(
     "Total Dependent Credits ($)",
-    value=format_number(0.00),
+    min_value=0.0,
+    value=0.00,
+    step=0.01,
+    format=",.2f",
     help="Enter total dependent credits"
 )
 
-# Convert dependent credit input to float
-try:
-    dep_credit = float(dep_credit_input.replace(',', '').strip())
-    if dep_credit < 0:
-        st.sidebar.error("Dependent credits cannot be negative")
-        dep_credit = 0
-except ValueError:
-    st.sidebar.error("Please enter a valid number for dependent credits")
-    dep_credit = 0
-
-oth = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", value=0.0, step=100.0)))
-ded = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", value=0.0, step=100.0)))
-extra = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", value=0.0, step=5.0)))
+# Update other inputs to use the same format
+oth = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", 
+    min_value=0.0, value=0.0, step=100.0, format=",.2f")))
+ded = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", 
+    min_value=0.0, value=0.0, step=100.0, format=",.2f")))
+extra = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", 
+    min_value=0.0, value=0.0, step=5.0, format=",.2f")))
 
 # Filing status must match lowercase keys:
 filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
@@ -1050,6 +1047,7 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
 
 
 
