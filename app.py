@@ -14,7 +14,37 @@ def init_analytics():
     if 'gross_val' not in st.session_state: st.session_state.gross_val = 0
     if 'other_job_amount' not in st.session_state: st.session_state.other_job_amount = Decimal("0")
 
-# Initialize session state at the very beginning
+def save_analytics_data(data):
+    try:
+        analytics_file = ".private/analytics_data.json"
+        os.makedirs(os.path.dirname(analytics_file), exist_ok=True)
+        existing_data = []
+        if os.path.exists(analytics_file):
+            with open(analytics_file, 'r') as f: existing_data = json.load(f)
+        if not any(entry.get('session_id') == data['session_id'] and entry.get('timestamp') == data['timestamp'] for entry in existing_data):
+            existing_data.append(data)
+            with open(analytics_file, 'w') as f: json.dump(existing_data, f, indent=2)
+    except Exception as e: st.error(f"Error saving analytics data: {str(e)}")
+
+def track_pageview(utm_params=None):
+    current_time = time.time()
+    if current_time - getattr(st.session_state, 'last_track_time', 0) < 1: return
+    st.session_state.last_track_time = current_time
+    st.session_state.page_views += 1
+    analytics_data = {
+        'timestamp': datetime.now().isoformat(),
+        'visitor_id': st.session_state.visitor_id,
+        'session_id': st.session_state.session_id,
+        'session_duration': current_time - st.session_state.session_start,
+        'page_views': st.session_state.page_views,
+        'features_used': list(st.session_state.features_used),
+        'utm_source': utm_params.get('source', 'direct') if utm_params else 'direct',
+        'utm_medium': utm_params.get('medium', 'none') if utm_params else 'none',
+        'utm_campaign': utm_params.get('campaign', 'none') if utm_params else 'none'
+    }
+    if st.session_state.is_admin: save_analytics_data(analytics_data)
+
+# Initialize session state and track pageview at the very beginning
 init_analytics()
 track_pageview()
 
@@ -144,41 +174,11 @@ def display_analytics_dashboard():
 def verify_admin_password(password):
     return hashlib.sha256(password.encode()).hexdigest() == ADMIN_PASSWORD_HASH
 
-def track_pageview(utm_params=None):
-    current_time = time.time()
-    if current_time - getattr(st.session_state, 'last_track_time', 0) < 1: return
-    st.session_state.last_track_time = current_time
-    st.session_state.page_views += 1
-    analytics_data = {
-        'timestamp': datetime.now().isoformat(),
-        'visitor_id': st.session_state.visitor_id,
-        'session_id': st.session_state.session_id,
-        'session_duration': current_time - st.session_state.session_start,
-        'page_views': st.session_state.page_views,
-        'features_used': list(st.session_state.features_used),
-        'utm_source': utm_params.get('source', 'direct') if utm_params else 'direct',
-        'utm_medium': utm_params.get('medium', 'none') if utm_params else 'none',
-        'utm_campaign': utm_params.get('campaign', 'none') if utm_params else 'none'
-    }
-    if st.session_state.is_admin: save_analytics_data(analytics_data)
-
 def track_feature_usage(feature_name: str):
     if feature_name not in st.session_state.features_used:
         st.session_state.features_used.add(feature_name)
         st.session_state.last_activity = time.time()
         track_pageview()
-
-def save_analytics_data(data):
-    try:
-        analytics_file = ".private/analytics_data.json"
-        os.makedirs(os.path.dirname(analytics_file), exist_ok=True)
-        existing_data = []
-        if os.path.exists(analytics_file):
-            with open(analytics_file, 'r') as f: existing_data = json.load(f)
-        if not any(entry.get('session_id') == data['session_id'] and entry.get('timestamp') == data['timestamp'] for entry in existing_data):
-            existing_data.append(data)
-            with open(analytics_file, 'w') as f: json.dump(existing_data, f, indent=2)
-    except Exception as e: st.error(f"Error saving analytics data: {str(e)}")
 
 getcontext().prec = 28
 getcontext().rounding = ROUND_HALF_UP
