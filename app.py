@@ -388,8 +388,14 @@ def perform_calculation():
         net = per_pay - fed - ss - mi
 
     cols = st.columns(4)
-    [cols[i].metric(lbl, f"${val:,.2f}") for i, (lbl, val) in enumerate(zip(
-        ["Federal Tax", "Social Security", "Medicare", "Net Pay"], [fed, ss, mi, net]))]
+    with cols[0]:
+        st.metric("Federal Tax", f"${fed:,.2f}")
+    with cols[1]:
+        st.metric("Social Security", f"${ss:,.2f}")
+    with cols[2]:
+        st.metric("Medicare", f"${mi:,.2f}")
+    with cols[3]:
+        st.metric("Net Pay", f"${net:,.2f}")
 
     if st.session_state.calculator is not None:
         annual_income = Decimal(str(gross if st.session_state.annual else gross * PERIODS[st.session_state.period]))
@@ -521,8 +527,6 @@ IRS_1040_BRACKETS = {
     "married": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("23200"),"base":Decimal("2320"),"rate":Decimal("0.12")},{"min":Decimal("94300"),"base":Decimal("8620"),"rate":Decimal("0.22")},{"min":Decimal("201050"),"base":Decimal("29366"),"rate":Decimal("0.24")},{"min":Decimal("383900"),"base":Decimal("74766"),"rate":Decimal("0.32")},{"min":Decimal("487450"),"base":Decimal("105654"),"rate":Decimal("0.35")},{"min":Decimal("731200"),"base":Decimal("196669"),"rate":Decimal("0.37")}],
     "head": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("16550"),"base":Decimal("1655"),"rate":Decimal("0.12")},{"min":Decimal("63100"),"base":Decimal("7206"),"rate":Decimal("0.22")},{"min":Decimal("100500"),"base":Decimal("15498"),"rate":Decimal("0.24")},{"min":Decimal("191950"),"base":Decimal("37236"),"rate":Decimal("0.32")},{"min":Decimal("243700"),"base":Decimal("53772"),"rate":Decimal("0.35")},{"min":Decimal("609350"),"base":Decimal("183074"),"rate":Decimal("0.37")}]
 }
-
-
 
 
 
