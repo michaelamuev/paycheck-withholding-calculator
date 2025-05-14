@@ -723,51 +723,30 @@ st.sidebar.title("Inputs")
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
-def format_currency_input(label: str, min_value: float = 0.0, value: float = 0.0, step: float = 0.01, help: str = None) -> float:
-    """Custom currency input that enforces 2 decimal places and adds commas."""
-    # Format the default value with commas and 2 decimal places
-    formatted_value = f"{value:,.2f}"
-    
-    # Create text input for currency
-    input_value = st.text_input(
-        label,
-        value=formatted_value,
-        help=help,
-        key=f"currency_input_{label}"
-    )
-    
+def format_number(value):
+    """Format a number with commas for display"""
     try:
-        # Remove commas and validate input
-        cleaned_value = input_value.replace(",", "")
-        # Ensure only 2 decimal places
-        if "." in cleaned_value:
-            dollars, cents = cleaned_value.split(".")
-            if len(cents) > 2:
-                cents = cents[:2]
-            cleaned_value = f"{dollars}.{cents}"
-        
-        # Convert to float and validate range
-        result = float(cleaned_value)
-        if result < min_value:
-            st.error(f"Value cannot be less than {min_value:,.2f}")
-            return min_value
-        return result
-    except ValueError:
-        st.error("Please enter a valid number")
+        num = float(str(value).replace(',', ''))
+        return f"{num:,.2f}"
+    except:
         return value
 
 if annual:
-    gross_val = format_currency_input(
+    gross_val = st.sidebar.number_input(
         "Annual Gross Salary ($)",
         min_value=0.0,
         value=60000.00,
+        step=0.01,
+        format="%,.2f",  # Add comma formatting
         help="Enter your annual gross salary"
     )
 else:
-    gross_val = format_currency_input(
+    gross_val = st.sidebar.number_input(
         "Gross Amount per Paycheck ($)",
         min_value=0.0,
         value=1000.00,
+        step=0.01,
+        format="%,.2f",  # Add comma formatting
         help="Enter your gross pay per paycheck"
     )
 
@@ -795,10 +774,12 @@ if multi:
     
     if job_count == "Two jobs total":
         st.sidebar.markdown("For most accurate withholding with two jobs:")
-        other_job_amount = format_currency_input(
+        other_job_amount = st.sidebar.number_input(
             "Annual salary of other job ($)",
             min_value=0.0,
             value=0.00,
+            step=0.01,
+            format="%,.2f",  # Add comma formatting
             help="Enter the annual salary of the other job"
         )
     else:  # Three or more jobs
@@ -815,27 +796,32 @@ st.sidebar.markdown("""
     - $2,000 per qualifying child under 17
     - $1,500 per dependent 17 and older
 """)
-dep_credit = format_currency_input(
+dep_credit = st.sidebar.number_input(
     "Total Dependent Credits ($)",
     min_value=0.0,
     value=0.00,
+    step=0.01,
+    format="%,.2f",  # Add comma formatting
     help="Enter total dependent credits"
 )
 
 # Update other inputs to use the same format
-oth = format_currency_input("Step 4(a): Other income ($)", min_value=0.0, value=0.0, step=100.0)
-ded = format_currency_input("Step 4(b): Deductions over standard ($)", min_value=0.0, value=0.0, step=100.0)
-extra = format_currency_input("Step 4(c): Extra withholding per period ($)", min_value=0.0, value=0.0, step=5.0)
+oth = st.sidebar.number_input("Step 4(a): Other income ($)", 
+    min_value=0.0, value=0.0, step=100.0, format="%,.2f")  # Add comma formatting
+ded = st.sidebar.number_input("Step 4(b): Deductions over standard ($)", 
+    min_value=0.0, value=0.0, step=100.0, format="%,.2f")  # Add comma formatting
+extra = st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", 
+    min_value=0.0, value=0.0, step=5.0, format="%,.2f")  # Add comma formatting
 
 # Filing status must match lowercase keys:
 filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
 
 # State Tax Section
-st.sidebar.markdown("---")
-st.sidebar.subheader("State Tax")
+st.markdown("---")
+st.subheader("State Tax")
 
 # State selection
-selected_state = st.sidebar.selectbox(
+selected_state = st.selectbox(
     "Select State",
     ["None"] + sorted(STATE_CALCULATORS.keys()),
     format_func=lambda x: "No state tax" if x == "None" else f"{get_calculator(x).state_name} ({x})"
@@ -1061,6 +1047,7 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
 
 
 
