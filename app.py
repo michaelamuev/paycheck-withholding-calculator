@@ -717,21 +717,71 @@ def calculate_mi(gross: Decimal, period: str, annual: bool) -> Decimal:
     mi_ann = base * MEDICARE_RATE
     return (mi_ann if annual else mi_ann / p).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
+def format_currency(value: str) -> str:
+    """Format a string number into currency format with commas and two decimal places."""
+    try:
+        # Remove any existing commas and spaces
+        clean_value = value.replace(",", "").replace(" ", "")
+        
+        # Split on decimal point
+        parts = clean_value.split(".")
+        
+        # Format the whole number part with commas
+        if parts[0]:
+            whole = "{:,}".format(int(parts[0]))
+        else:
+            whole = "0"
+            
+        # Handle decimal part
+        if len(parts) > 1:
+            # Limit to 2 decimal places
+            decimal = parts[1][:2]
+            # Pad with zeros if needed
+            decimal = decimal.ljust(2, "0")
+            return f"{whole}.{decimal}"
+        else:
+            return f"{whole}.00"
+    except:
+        return "0.00"
+
+def formatted_number_input(label: str, value: str, help: str = "") -> str:
+    """Custom number input that formats currency with commas and restricts decimal places."""
+    # Initialize session state for this input if not exists
+    key = f"formatted_input_{label}"
+    if key not in st.session_state:
+        st.session_state[key] = format_currency(value)
+        
+    # Create the text input
+    new_value = st.text_input(
+        label,
+        value=st.session_state[key],
+        help=help,
+        key=f"{key}_input"
+    )
+    
+    # Format the input value
+    formatted_value = format_currency(new_value)
+    
+    # Update session state
+    st.session_state[key] = formatted_value
+    
+    return formatted_value
+
 # ─── SIDEBAR UI ────────────────────────────────────────────────────────────────
 st.sidebar.title("Inputs")
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
 if annual:
-    gross_input = st.sidebar.text_input(
+    gross_input = formatted_number_input(
         "Annual Gross Salary ($)",
-        value="60000.00",
+        "60000.00",
         help="Enter your annual gross salary (numbers only)"
     )
 else:
-    gross_input = st.sidebar.text_input(
+    gross_input = formatted_number_input(
         "Gross Amount per Paycheck ($)",
-        value="1000.00",
+        "1000.00",
         help="Enter your gross pay per paycheck (numbers only)"
     )
 
@@ -1041,6 +1091,8 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
+
 
 
 
