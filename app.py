@@ -8,6 +8,7 @@ import json
 import os
 import hashlib
 import uuid
+import re
 
 # ─── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -722,30 +723,51 @@ st.sidebar.title("Inputs")
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
-def format_number(value):
-    """Format a number with commas for display"""
+def format_currency_input(label: str, min_value: float = 0.0, value: float = 0.0, step: float = 0.01, help: str = None) -> float:
+    """Custom currency input that enforces 2 decimal places and adds commas."""
+    # Format the default value with commas and 2 decimal places
+    formatted_value = f"{value:,.2f}"
+    
+    # Create text input for currency
+    input_value = st.text_input(
+        label,
+        value=formatted_value,
+        help=help,
+        key=f"currency_input_{label}"
+    )
+    
     try:
-        num = float(str(value).replace(',', ''))
-        return f"{num:,.2f}"
-    except:
+        # Remove commas and validate input
+        cleaned_value = input_value.replace(",", "")
+        # Ensure only 2 decimal places
+        if "." in cleaned_value:
+            dollars, cents = cleaned_value.split(".")
+            if len(cents) > 2:
+                cents = cents[:2]
+            cleaned_value = f"{dollars}.{cents}"
+        
+        # Convert to float and validate range
+        result = float(cleaned_value)
+        if result < min_value:
+            st.error(f"Value cannot be less than {min_value:,.2f}")
+            return min_value
+        return result
+    except ValueError:
+        st.error("Please enter a valid number")
         return value
 
 if annual:
-    gross_val = st.sidebar.number_input(
+    gross_val = format_currency_input(
         "Annual Gross Salary ($)",
         min_value=0.0,
         value=60000.00,
-        step=0.01,
-        format="%0.2f",
         help="Enter your annual gross salary"
     )
 else:
-    gross_val = st.sidebar.number_input(
+    gross_val = format_currency_input(
         "Gross Amount per Paycheck ($)",
         min_value=0.0,
         value=1000.00,
-        step=0.01,
-        format="%0.2f",
         help="Enter your gross pay per paycheck"
     )
 
@@ -773,20 +795,12 @@ if multi:
     
     if job_count == "Two jobs total":
         st.sidebar.markdown("For most accurate withholding with two jobs:")
-        other_job_input = st.sidebar.text_input(
+        other_job_amount = format_currency_input(
             "Annual salary of other job ($)",
-            value="0.00",
+            min_value=0.0,
+            value=0.00,
             help="Enter the annual salary of the other job"
         )
-        try:
-            other_job_amount = Decimal(other_job_input.replace(',', '').strip())
-            if other_job_amount < 0:
-                st.sidebar.error("Salary cannot be negative")
-                other_job_amount = Decimal("0")
-        except:
-            st.sidebar.error("Please enter a valid number")
-            other_job_amount = Decimal("0")
-            
     else:  # Three or more jobs
         st.sidebar.markdown("""
             For three or more jobs:
@@ -801,22 +815,17 @@ st.sidebar.markdown("""
     - $2,000 per qualifying child under 17
     - $1,500 per dependent 17 and older
 """)
-dep_credit = st.sidebar.number_input(
+dep_credit = format_currency_input(
     "Total Dependent Credits ($)",
     min_value=0.0,
     value=0.00,
-    step=0.01,
-    format="%0.2f",
     help="Enter total dependent credits"
 )
 
 # Update other inputs to use the same format
-oth = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", 
-    min_value=0.0, value=0.0, step=100.0, format="%0.2f")))
-ded = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", 
-    min_value=0.0, value=0.0, step=100.0, format="%0.2f")))
-extra = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", 
-    min_value=0.0, value=0.0, step=5.0, format="%0.2f")))
+oth = format_currency_input("Step 4(a): Other income ($)", min_value=0.0, value=0.0, step=100.0)
+ded = format_currency_input("Step 4(b): Deductions over standard ($)", min_value=0.0, value=0.0, step=100.0)
+extra = format_currency_input("Step 4(c): Extra withholding per period ($)", min_value=0.0, value=0.0, step=5.0)
 
 # Filing status must match lowercase keys:
 filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
@@ -869,11 +878,16 @@ if st.sidebar.button("Calculate"):
     if selected_state != "None":
         track_feature_usage(f'state_tax_{selected_state}')
         
-    # now the real work begins
+    # Convert float values to Decimal for calculations
     gross = Decimal(str(gross_val))
     dep_credit_dec = Decimal(str(dep_credit))
     other_job = Decimal(str(other_job_amount)) if multi and job_count == "Two jobs total" else Decimal("0")
-    fed = calculate_fed(gross, filing, multi, dep_credit_dec, oth, ded, extra, period, annual, other_job)
+    oth_dec = Decimal(str(oth))
+    ded_dec = Decimal(str(ded))
+    extra_dec = Decimal(str(extra))
+    
+    # Calculate taxes
+    fed = calculate_fed(gross, filing, multi, dep_credit_dec, oth_dec, ded_dec, extra_dec, period, annual, other_job)
     ss  = calculate_ss(gross, period, annual)
     mi  = calculate_mi(gross, period, annual)
     if annual:
@@ -1047,6 +1061,7 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
+
 
 
 
