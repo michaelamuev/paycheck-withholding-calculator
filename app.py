@@ -722,22 +722,34 @@ st.sidebar.title("Inputs")
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
+def format_number(value):
+    """Format a number with commas for display"""
+    try:
+        # Remove existing commas and convert to float
+        num = float(str(value).replace(',', ''))
+        # Format with commas and 2 decimal places
+        return f"{num:,.2f}"
+    except:
+        return value
+
 if annual:
     gross_input = st.sidebar.text_input(
         "Annual Gross Salary ($)",
-        value="60000.00",
+        value=format_number(60000.00),
         help="Enter your annual gross salary (numbers only)"
     )
 else:
     gross_input = st.sidebar.text_input(
         "Gross Amount per Paycheck ($)",
-        value="1000.00",
+        value=format_number(1000.00),
         help="Enter your gross pay per paycheck (numbers only)"
     )
 
 # Convert input to float, with error handling
 try:
     gross_val = float(gross_input.replace(',', '').strip())
+    # Format the display value with commas
+    st.sidebar.text(f"Entered amount: ${format_number(gross_val)}")
     if gross_val < 0:
         st.sidebar.error("Gross amount cannot be negative")
         gross_val = 0
@@ -794,8 +806,8 @@ st.sidebar.markdown("""
 """)
 dep_credit_input = st.sidebar.text_input(
     "Total Dependent Credits ($)",
-    value="0.00",
-    help="Enter total dependent credits (sum of $2,000 per qualifying child under 17 and $1,500 per dependent 17 and older)"
+    value=format_number(0.00),
+    help="Enter total dependent credits"
 )
 
 # Convert dependent credit input to float
@@ -808,9 +820,12 @@ except ValueError:
     st.sidebar.error("Please enter a valid number for dependent credits")
     dep_credit = 0
 
-oth    = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", value=0.0, step=100.0)))
-ded    = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", value=0.0, step=100.0)))
-extra  = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", value=0.0, step=5.0)))
+oth = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", 
+    value=0.0, step=100.0, format="%,.2f")))
+ded = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", 
+    value=0.0, step=100.0, format="%,.2f")))
+extra = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", 
+    value=0.0, step=5.0, format="%,.2f")))
 
 # Filing status must match lowercase keys:
 filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
@@ -1041,5 +1056,4 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
-
 
