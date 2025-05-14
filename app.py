@@ -8,7 +8,6 @@ import json
 import os
 import hashlib
 import uuid
-import re
 
 # ─── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -723,36 +722,27 @@ st.sidebar.title("Inputs")
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
 
-def format_number(value):
-    """Format a number with commas for display"""
-    try:
-        num = float(str(value).replace(',', ''))
-        return f"{num:,.2f}"
-    except:
-        return value
-
 if annual:
-    gross_val = st.sidebar.number_input(
+    gross_input = st.sidebar.text_input(
         "Annual Gross Salary ($)",
-        min_value=0.0,
-        value=60000.00,
-        step=0.01,
-        format="%,.2f",  # Add comma formatting
-        help="Enter your annual gross salary"
+        value="60000.00",
+        help="Enter your annual gross salary (numbers only)"
     )
 else:
-    gross_val = st.sidebar.number_input(
+    gross_input = st.sidebar.text_input(
         "Gross Amount per Paycheck ($)",
-        min_value=0.0,
-        value=1000.00,
-        step=0.01,
-        format="%,.2f",  # Add comma formatting
-        help="Enter your gross pay per paycheck"
+        value="1000.00",
+        help="Enter your gross pay per paycheck (numbers only)"
     )
 
-# Remove the try/except block since number_input handles validation
-if gross_val < 0:
-    st.sidebar.error("Gross amount cannot be negative")
+# Convert input to float, with error handling
+try:
+    gross_val = float(gross_input.replace(',', '').strip())
+    if gross_val < 0:
+        st.sidebar.error("Gross amount cannot be negative")
+        gross_val = 0
+except ValueError:
+    st.sidebar.error("Please enter a valid number")
     gross_val = 0
 
 period = st.sidebar.selectbox("Pay Frequency", ["weekly","biweekly","semimonthly","monthly"])
@@ -774,14 +764,20 @@ if multi:
     
     if job_count == "Two jobs total":
         st.sidebar.markdown("For most accurate withholding with two jobs:")
-        other_job_amount = st.sidebar.number_input(
+        other_job_input = st.sidebar.text_input(
             "Annual salary of other job ($)",
-            min_value=0.0,
-            value=0.00,
-            step=0.01,
-            format="%,.2f",  # Add comma formatting
+            value="0.00",
             help="Enter the annual salary of the other job"
         )
+        try:
+            other_job_amount = Decimal(other_job_input.replace(',', '').strip())
+            if other_job_amount < 0:
+                st.sidebar.error("Salary cannot be negative")
+                other_job_amount = Decimal("0")
+        except:
+            st.sidebar.error("Please enter a valid number")
+            other_job_amount = Decimal("0")
+            
     else:  # Three or more jobs
         st.sidebar.markdown("""
             For three or more jobs:
@@ -796,32 +792,35 @@ st.sidebar.markdown("""
     - $2,000 per qualifying child under 17
     - $1,500 per dependent 17 and older
 """)
-dep_credit = st.sidebar.number_input(
+dep_credit_input = st.sidebar.text_input(
     "Total Dependent Credits ($)",
-    min_value=0.0,
-    value=0.00,
-    step=0.01,
-    format="%,.2f",  # Add comma formatting
-    help="Enter total dependent credits"
+    value="0.00",
+    help="Enter total dependent credits (sum of $2,000 per qualifying child under 17 and $1,500 per dependent 17 and older)"
 )
 
-# Update other inputs to use the same format
-oth = st.sidebar.number_input("Step 4(a): Other income ($)", 
-    min_value=0.0, value=0.0, step=100.0, format="%,.2f")  # Add comma formatting
-ded = st.sidebar.number_input("Step 4(b): Deductions over standard ($)", 
-    min_value=0.0, value=0.0, step=100.0, format="%,.2f")  # Add comma formatting
-extra = st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", 
-    min_value=0.0, value=0.0, step=5.0, format="%,.2f")  # Add comma formatting
+# Convert dependent credit input to float
+try:
+    dep_credit = float(dep_credit_input.replace(',', '').strip())
+    if dep_credit < 0:
+        st.sidebar.error("Dependent credits cannot be negative")
+        dep_credit = 0
+except ValueError:
+    st.sidebar.error("Please enter a valid number for dependent credits")
+    dep_credit = 0
+
+oth    = Decimal(str(st.sidebar.number_input("Step 4(a): Other income ($)", value=0.0, step=100.0)))
+ded    = Decimal(str(st.sidebar.number_input("Step 4(b): Deductions over standard ($)", value=0.0, step=100.0)))
+extra  = Decimal(str(st.sidebar.number_input("Step 4(c): Extra withholding per period ($)", value=0.0, step=5.0)))
 
 # Filing status must match lowercase keys:
 filing = st.sidebar.selectbox("Filing Status (Step 1c)", ["single","married","head"])
 
 # State Tax Section
-st.markdown("---")
-st.subheader("State Tax")
+st.sidebar.markdown("---")
+st.sidebar.subheader("State Tax")
 
 # State selection
-selected_state = st.selectbox(
+selected_state = st.sidebar.selectbox(
     "Select State",
     ["None"] + sorted(STATE_CALCULATORS.keys()),
     format_func=lambda x: "No state tax" if x == "None" else f"{get_calculator(x).state_name} ({x})"
@@ -864,16 +863,11 @@ if st.sidebar.button("Calculate"):
     if selected_state != "None":
         track_feature_usage(f'state_tax_{selected_state}')
         
-    # Convert float values to Decimal for calculations
+    # now the real work begins
     gross = Decimal(str(gross_val))
     dep_credit_dec = Decimal(str(dep_credit))
     other_job = Decimal(str(other_job_amount)) if multi and job_count == "Two jobs total" else Decimal("0")
-    oth_dec = Decimal(str(oth))
-    ded_dec = Decimal(str(ded))
-    extra_dec = Decimal(str(extra))
-    
-    # Calculate taxes
-    fed = calculate_fed(gross, filing, multi, dep_credit_dec, oth_dec, ded_dec, extra_dec, period, annual, other_job)
+    fed = calculate_fed(gross, filing, multi, dep_credit_dec, oth, ded, extra, period, annual, other_job)
     ss  = calculate_ss(gross, period, annual)
     mi  = calculate_mi(gross, period, annual)
     if annual:
