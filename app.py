@@ -21,6 +21,13 @@ def formatted_currency_input(label, default_value="0.00", key=None, help=None):
                 num = float(raw)
             formatted = f"{num:,.2f}"
             st.session_state[key] = formatted
+            
+            # Store the numeric value for calculations
+            st.session_state.gross_val = num
+            
+            # Trigger calculation when enter is pressed
+            perform_calculation()
+            
         except:
             pass  # do nothing if invalid input
 
@@ -794,6 +801,7 @@ def formatted_number_input(label: str, value: str, help: str = "") -> str:
 st.sidebar.title("Inputs")
 mode = st.sidebar.radio("Mode", ["Single Paycheck", "Full Year"])
 annual = mode == "Full Year"
+st.session_state.annual = annual
 
 if annual:
     gross_input = formatted_currency_input(
@@ -816,15 +824,19 @@ try:
     if gross_val < 0:
         st.sidebar.error("Gross amount cannot be negative")
         gross_val = 0
+    st.session_state.gross_val = gross_val
 except ValueError:
     st.sidebar.error("Please enter a valid number")
-    gross_val = 0
+    st.session_state.gross_val = 0
 
 period = st.sidebar.selectbox("Pay Frequency", ["weekly","biweekly","semimonthly","monthly"])
+st.session_state.period = period
 
 # Enhanced Multiple Jobs Section
 st.sidebar.subheader("Step 2: Multiple Jobs / Spouse Works")
 multi = st.sidebar.checkbox("Check if any of these apply:")
+st.session_state.multi = multi
+
 if multi:
     st.sidebar.markdown("""
         📋 **Multiple Jobs Worksheet**
@@ -836,6 +848,7 @@ if multi:
         "Select your situation:",
         ["Two jobs total", "Three or more jobs total"]
     )
+    st.session_state.job_count = job_count
     
     if job_count == "Two jobs total":
         st.sidebar.markdown("For most accurate withholding with two jobs:")
@@ -849,16 +862,10 @@ if multi:
             if other_job_amount < 0:
                 st.sidebar.error("Salary cannot be negative")
                 other_job_amount = Decimal("0")
+            st.session_state.other_job_amount = other_job_amount
         except:
             st.sidebar.error("Please enter a valid number")
-            other_job_amount = Decimal("0")
-            
-    else:  # Three or more jobs
-        st.sidebar.markdown("""
-            For three or more jobs:
-            - Higher withholding amounts will be applied
-            - Consider using the IRS Tax Withholding Estimator for more accuracy
-        """)
+            st.session_state.other_job_amount = Decimal("0")
 
 # New dependent credit section
 st.sidebar.subheader("Step 3: Dependent Credits")
@@ -912,66 +919,79 @@ if selected_state != "None":
 else:
     calculator = None
 
-# ─── MAIN AREA ────────────────────────────────────────────────────────────────
-st.title("2024 Paycheck Tax Withholding Calculator")
-st.markdown("This uses IRS Publication 15-T percentage and annual 1040 tables for federal withholding, plus optional NY state withholding.")
+# Store all other inputs in session state
+st.session_state.dep_credit = dep_credit
+st.session_state.oth = oth
+st.session_state.ded = ded
+st.session_state.extra = extra
+st.session_state.filing = filing
+st.session_state.selected_state = selected_state
+st.session_state.calculator = calculator
+st.session_state.state_inputs = state_inputs
 
-st.warning("""
-⚠️ **Disclaimer**: 
-- This calculator provides estimates based on IRS Publication 15-T procedures
-- Results are approximations and should not be used for official tax filing purposes
-- For accurate tax advice, please consult a qualified tax professional
-- Actual withholding may vary based on specific employer policies and circumstances
-""")
-
-if st.sidebar.button("Calculate"):
-    if gross_val > 250_000:
+def perform_calculation():
+    """Perform all tax calculations and display results."""
+    if 'gross_val' not in st.session_state or st.session_state.gross_val > 250_000:
         st.error("who we lying to 👀")
-        st.stop()
+        return
         
     # Track calculator usage
     track_feature_usage('calculator_used')  # Track basic calculator usage
-    if multi:
+    if st.session_state.multi:
         track_feature_usage('multiple_jobs')
-    if dep_credit > 0:
+    if st.session_state.dep_credit > 0:
         track_feature_usage('dependent_credits')
-    if selected_state != "None":
-        track_feature_usage(f'state_tax_{selected_state}')
+    if st.session_state.selected_state != "None":
+        track_feature_usage(f'state_tax_{st.session_state.selected_state}')
         
     # now the real work begins
-    gross = Decimal(str(gross_val))
-    dep_credit_dec = Decimal(str(dep_credit))
-    other_job = Decimal(str(other_job_amount)) if multi and job_count == "Two jobs total" else Decimal("0")
-    fed = calculate_fed(gross, filing, multi, dep_credit_dec, oth, ded, extra, period, annual, other_job)
-    ss  = calculate_ss(gross, period, annual)
-    mi  = calculate_mi(gross, period, annual)
-    if annual:
+    gross = Decimal(str(st.session_state.gross_val))
+    dep_credit_dec = Decimal(str(st.session_state.dep_credit))
+    other_job = Decimal(str(st.session_state.other_job_amount)) if st.session_state.multi and st.session_state.job_count == "Two jobs total" else Decimal("0")
+    
+    fed = calculate_fed(
+        gross, 
+        st.session_state.filing, 
+        st.session_state.multi, 
+        dep_credit_dec,
+        st.session_state.oth, 
+        st.session_state.ded, 
+        st.session_state.extra, 
+        st.session_state.period, 
+        st.session_state.annual,
+        other_job
+    )
+    
+    ss = calculate_ss(gross, st.session_state.period, st.session_state.annual)
+    mi = calculate_mi(gross, st.session_state.period, st.session_state.annual)
+    
+    if st.session_state.annual:
         net = gross - fed - ss - mi
-        per_pay = gross / PERIODS[period]
+        per_pay = gross / PERIODS[st.session_state.period]
     else:
         per_pay = gross
         net = per_pay - fed - ss - mi
 
     cols = st.columns(4)
-    cols[0].metric("Federal Tax",     f"${fed:,.2f}")
+    cols[0].metric("Federal Tax", f"${fed:,.2f}")
     cols[1].metric("Social Security", f"${ss:,.2f}")
-    cols[2].metric("Medicare",        f"${mi:,.2f}")
-    cols[3].metric("Net Pay",         f"${net:,.2f}")
+    cols[2].metric("Medicare", f"${mi:,.2f}")
+    cols[3].metric("Net Pay", f"${net:,.2f}")
 
     # State Tax Calculation
-    if calculator is not None:
-        annual_income = Decimal(str(gross if annual else gross * PERIODS[period]))
+    if st.session_state.calculator is not None:
+        annual_income = Decimal(str(gross if st.session_state.annual else gross * PERIODS[st.session_state.period]))
         
         # Calculate state taxes using the modular calculator
-        result = calculator.calculate(
+        result = st.session_state.calculator.calculate(
             income=annual_income,
-            pay_period=period,
-            is_annual=annual,
-            **state_inputs
+            pay_period=st.session_state.period,
+            is_annual=st.session_state.annual,
+            **st.session_state.state_inputs
         )
         
         # Display State Tax Information
-        st.markdown(f"### {calculator.state_name} Tax Breakdown")
+        st.markdown(f"### {st.session_state.calculator.state_name} Tax Breakdown")
         
         # Create columns based on whether there are local taxes
         num_cols = 4 if result.local_taxes else 3
@@ -980,9 +1000,9 @@ if st.sidebar.button("Calculate"):
         # State Tax
         with state_cols[0]:
             st.metric(
-                f"{calculator.state_code} State Tax",
+                f"{st.session_state.calculator.state_code} State Tax",
                 f"${result.state_tax:,.2f}",
-                help=f"{calculator.state_name} state withholding tax per pay period"
+                help=f"{st.session_state.calculator.state_name} state withholding tax per pay period"
             )
             
         # Local Taxes (if any)
@@ -1011,14 +1031,14 @@ if st.sidebar.button("Calculate"):
             st.metric(
                 "Total State Tax",
                 f"${total_tax:,.2f}",
-                help=f"Total {calculator.state_name} taxes per pay period"
+                help=f"Total {st.session_state.calculator.state_name} taxes per pay period"
             )
             
         # Show annual equivalent if in single paycheck mode
-        if not annual:
-            annual_state = total_tax * PERIODS[period]
+        if not st.session_state.annual:
+            annual_state = total_tax * PERIODS[st.session_state.period]
             st.markdown("#### Annual Equivalent")
-            st.markdown(f"**Total {calculator.state_name} Tax: ${annual_state:,.2f}**")
+            st.markdown(f"**Total {st.session_state.calculator.state_name} Tax: ${annual_state:,.2f}**")
             
         # Show any warnings or errors
         if result.warnings:
@@ -1028,20 +1048,9 @@ if st.sidebar.button("Calculate"):
         if result.errors:
             for error in result.errors:
                 st.error(f"❗ {error}")
-            
-        # Add explanatory notes
-        with st.expander(f"ℹ️ About {calculator.state_name} Tax Calculations"):
-            st.markdown(f"""
-                **Calculation Details:**
-                - Filing Status: {state_inputs.get('filing_status', 'Single')}
-                - Deductions: {', '.join(f'{k}: ${v:,.2f}' for k,v in result.deductions.items())}
-                - Credits: {', '.join(f'{k}: ${v:,.2f}' for k,v in result.credits.items()) if result.credits else 'None applied'}
-                
-                **Notes:**
-                - These calculations are estimates based on 2024 tax tables
-                - Actual withholding may vary based on your specific situation
-                - Consult a tax professional for personalized advice
-            """)
+
+if st.sidebar.button("Calculate"):
+    perform_calculation()
 
 # ─── Feedback Section ─────────────────────────────────────────────────────────
 with st.expander("💬 Have feedback or suggestions?"):
@@ -1116,15 +1125,3 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
     except Exception as e:
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
-
-
-
-
-
-
-
-
-
-
-
-
