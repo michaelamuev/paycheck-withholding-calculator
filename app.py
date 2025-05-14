@@ -3,6 +3,21 @@ from decimal import Decimal, getcontext, ROUND_HALF_UP
 from datetime import datetime
 from states import get_calculator, STATE_CALCULATORS
 
+def init_analytics():
+    if 'visitor_id' not in st.session_state: st.session_state.visitor_id = str(uuid.uuid4())
+    if 'session_id' not in st.session_state: st.session_state.session_id = str(uuid.uuid4())
+    if 'session_start' not in st.session_state: st.session_state.session_start = time.time()
+    if 'page_views' not in st.session_state: st.session_state.page_views = 0
+    if 'features_used' not in st.session_state: st.session_state.features_used = set()
+    if 'last_activity' not in st.session_state: st.session_state.last_activity = time.time()
+    if 'is_admin' not in st.session_state: st.session_state.is_admin = False
+    if 'gross_val' not in st.session_state: st.session_state.gross_val = 0
+    if 'other_job_amount' not in st.session_state: st.session_state.other_job_amount = Decimal("0")
+
+# Initialize session state at the very beginning
+init_analytics()
+track_pageview()
+
 def formatted_currency_input(label, default_value="0.00", key=None, help=None):
     def format_input():
         raw = st.session_state[key].replace(",", "")
@@ -125,15 +140,6 @@ def display_analytics_dashboard():
     except Exception as e:
         st.error(f"Error loading analytics data: {str(e)}")
         st.exception(e)
-
-def init_analytics():
-    if 'visitor_id' not in st.session_state: st.session_state.visitor_id = str(uuid.uuid4())
-    if 'session_id' not in st.session_state: st.session_state.session_id = str(uuid.uuid4())
-    if 'session_start' not in st.session_state: st.session_state.session_start = time.time()
-    if 'page_views' not in st.session_state: st.session_state.page_views = 0
-    if 'features_used' not in st.session_state: st.session_state.features_used = set()
-    if 'last_activity' not in st.session_state: st.session_state.last_activity = time.time()
-    if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 
 def verify_admin_password(password):
     return hashlib.sha256(password.encode()).hexdigest() == ADMIN_PASSWORD_HASH
@@ -473,8 +479,6 @@ with st.expander("🐍 Take a Break: Play Snake!", expanded=False):
         st.error("Unable to load the snake game. Please refresh the page.")
         st.warning(f"Error details: {str(e)}")
 
-init_analytics()
-track_pageview()
 tip = random.choice(IRS_TRIVIA)
 st.info(f"💡 **Tip of the Day:** {tip}")
 st.markdown(f"""<!-- Google Analytics 4 -->
@@ -514,3 +518,6 @@ IRS_1040_BRACKETS = {
     "married": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("23200"),"base":Decimal("2320"),"rate":Decimal("0.12")},{"min":Decimal("94300"),"base":Decimal("8620"),"rate":Decimal("0.22")},{"min":Decimal("201050"),"base":Decimal("29366"),"rate":Decimal("0.24")},{"min":Decimal("383900"),"base":Decimal("74766"),"rate":Decimal("0.32")},{"min":Decimal("487450"),"base":Decimal("105654"),"rate":Decimal("0.35")},{"min":Decimal("731200"),"base":Decimal("196669"),"rate":Decimal("0.37")}],
     "head": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("16550"),"base":Decimal("1655"),"rate":Decimal("0.12")},{"min":Decimal("63100"),"base":Decimal("7206"),"rate":Decimal("0.22")},{"min":Decimal("100500"),"base":Decimal("15498"),"rate":Decimal("0.24")},{"min":Decimal("191950"),"base":Decimal("37236"),"rate":Decimal("0.32")},{"min":Decimal("243700"),"base":Decimal("53772"),"rate":Decimal("0.35")},{"min":Decimal("609350"),"base":Decimal("183074"),"rate":Decimal("0.37")}]
 }
+
+
+
