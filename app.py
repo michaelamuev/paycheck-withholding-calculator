@@ -430,10 +430,11 @@ def perform_calculation():
         with state_cols[-1]:
             st.metric("Total State Tax", f"${total_tax:,.2f}", help=f"Total {st.session_state.calculator.state_name} taxes per pay period")
         
-        # Only show annual equivalent if we're in per-period mode AND the displayed amounts are per-period
-        if not st.session_state.annual and not result.is_annual:
+        if not st.session_state.annual:
             annual_state = total_tax * PERIODS[st.session_state.period]
             st.markdown(f"#### Annual Equivalent\n**Total {st.session_state.calculator.state_name} Tax: ${annual_state:,.2f}**")
+        else:
+            st.markdown(f"#### Annual Total\n**Total {st.session_state.calculator.state_name} Tax: ${total_tax:,.2f}**")
         
         if result.warnings:
             for warning in result.warnings: st.warning(f"⚠️ {warning}")
@@ -532,3 +533,6 @@ IRS_1040_BRACKETS = {
     "married": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("23200"),"base":Decimal("2320"),"rate":Decimal("0.12")},{"min":Decimal("94300"),"base":Decimal("8620"),"rate":Decimal("0.22")},{"min":Decimal("201050"),"base":Decimal("29366"),"rate":Decimal("0.24")},{"min":Decimal("383900"),"base":Decimal("74766"),"rate":Decimal("0.32")},{"min":Decimal("487450"),"base":Decimal("105654"),"rate":Decimal("0.35")},{"min":Decimal("731200"),"base":Decimal("196669"),"rate":Decimal("0.37")}],
     "head": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("16550"),"base":Decimal("1655"),"rate":Decimal("0.12")},{"min":Decimal("63100"),"base":Decimal("7206"),"rate":Decimal("0.22")},{"min":Decimal("100500"),"base":Decimal("15498"),"rate":Decimal("0.24")},{"min":Decimal("191950"),"base":Decimal("37236"),"rate":Decimal("0.32")},{"min":Decimal("243700"),"base":Decimal("53772"),"rate":Decimal("0.35")},{"min":Decimal("609350"),"base":Decimal("183074"),"rate":Decimal("0.37")}]
 }
+
+
+
