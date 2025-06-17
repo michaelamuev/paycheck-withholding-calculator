@@ -361,7 +361,7 @@ st.session_state.update({
 })
 
 def perform_calculation():
-    if 'gross_val' not in st.session_state or st.session_state.gross_val > 250_000:
+    if 'gross_val' not in st.session_state or st.session_state.gross_val > 400_000:
         st.error("who we lying to 👀")
         return
     track_feature_usage('calculator_used')
