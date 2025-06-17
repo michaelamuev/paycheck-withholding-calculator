@@ -189,7 +189,6 @@ SOCIAL_RATE = Decimal("0.062")
 MEDICARE_RATE = Decimal("0.0145")
 PERIODS = {"weekly": Decimal("52"), "biweekly": Decimal("26"), "semimonthly": Decimal("24"), "monthly": Decimal("12")}
 
-
 PERCENTAGE_METHOD_TABLES = {
     "weekly": {
         "single": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("76"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("291"),"base":Decimal("21.50"),"rate":Decimal("0.12")},{"min":Decimal("933"),"base":Decimal("104.26"),"rate":Decimal("0.22")},{"min":Decimal("1822"),"base":Decimal("326.26"),"rate":Decimal("0.24")},{"min":Decimal("3692"),"base":Decimal("788.50"),"rate":Decimal("0.32")},{"min":Decimal("4600"),"base":Decimal("1086.90"),"rate":Decimal("0.35")},{"min":Decimal("11950"),"base":Decimal("3700.27"),"rate":Decimal("0.37")}],
@@ -212,13 +211,6 @@ PERCENTAGE_METHOD_TABLES = {
         "head": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("628"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("2000"),"base":Decimal("138.20"),"rate":Decimal("0.12")},{"min":Decimal("4525"),"base":Decimal("451.40"),"rate":Decimal("0.22")},{"min":Decimal("7034"),"base":Decimal("1004.96"),"rate":Decimal("0.24")},{"min":Decimal("13562"),"base":Decimal("2658.40"),"rate":Decimal("0.32")},{"min":Decimal("17098"),"base":Decimal("3800.72"),"rate":Decimal("0.35")},{"min":Decimal("44433"),"base":Decimal("12945.68"),"rate":Decimal("0.37")}]
     }
 }
-
-IRS_1040_BRACKETS = {
-    "single": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("11600"),"base":Decimal("1160"),"rate":Decimal("0.12")},{"min":Decimal("47150"),"base":Decimal("5426"),"rate":Decimal("0.22")},{"min":Decimal("100525"),"base":Decimal("17206"),"rate":Decimal("0.24")},{"min":Decimal("191950"),"base":Decimal("39146"),"rate":Decimal("0.32")},{"min":Decimal("243725"),"base":Decimal("55682"),"rate":Decimal("0.35")},{"min":Decimal("609350"),"base":Decimal("183647"),"rate":Decimal("0.37")}],
-    "married": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("23200"),"base":Decimal("2320"),"rate":Decimal("0.12")},{"min":Decimal("94300"),"base":Decimal("8620"),"rate":Decimal("0.22")},{"min":Decimal("201050"),"base":Decimal("29366"),"rate":Decimal("0.24")},{"min":Decimal("383900"),"base":Decimal("74766"),"rate":Decimal("0.32")},{"min":Decimal("487450"),"base":Decimal("105654"),"rate":Decimal("0.35")},{"min":Decimal("731200"),"base":Decimal("196669"),"rate":Decimal("0.37")}],
-    "head": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("16550"),"base":Decimal("1655"),"rate":Decimal("0.12")},{"min":Decimal("63100"),"base":Decimal("7206"),"rate":Decimal("0.22")},{"min":Decimal("100500"),"base":Decimal("15498"),"rate":Decimal("0.24")},{"min":Decimal("191950"),"base":Decimal("37236"),"rate":Decimal("0.32")},{"min":Decimal("243700"),"base":Decimal("53772"),"rate":Decimal("0.35")},{"min":Decimal("609350"),"base":Decimal("183074"),"rate":Decimal("0.37")}]
-}
-
 
 MULTIPLE_JOBS_RANGES = {
     "single": [
@@ -392,7 +384,7 @@ st.session_state.update({
 })
 
 def perform_calculation():
-    if 'gross_val' not in st.session_state or st.session_state.gross_val > 400_000:
+    if 'gross_val' not in st.session_state or st.session_state.gross_val > 250_000:
         st.error("who we lying to 👀")
         return
     track_feature_usage('calculator_used')
@@ -536,5 +528,10 @@ st.markdown(f"""<!-- Google Analytics 4 -->
   gtag('config', '{GA_TRACKING_ID}');
 </script>""", unsafe_allow_html=True)
 
+IRS_1040_BRACKETS = {
+    "single": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("11600"),"base":Decimal("1160"),"rate":Decimal("0.12")},{"min":Decimal("47150"),"base":Decimal("5426"),"rate":Decimal("0.22")},{"min":Decimal("100525"),"base":Decimal("17206"),"rate":Decimal("0.24")},{"min":Decimal("191950"),"base":Decimal("39146"),"rate":Decimal("0.32")},{"min":Decimal("243725"),"base":Decimal("55682"),"rate":Decimal("0.35")},{"min":Decimal("609350"),"base":Decimal("183647"),"rate":Decimal("0.37")}],
+    "married": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("23200"),"base":Decimal("2320"),"rate":Decimal("0.12")},{"min":Decimal("94300"),"base":Decimal("8620"),"rate":Decimal("0.22")},{"min":Decimal("201050"),"base":Decimal("29366"),"rate":Decimal("0.24")},{"min":Decimal("383900"),"base":Decimal("74766"),"rate":Decimal("0.32")},{"min":Decimal("487450"),"base":Decimal("105654"),"rate":Decimal("0.35")},{"min":Decimal("731200"),"base":Decimal("196669"),"rate":Decimal("0.37")}],
+    "head": [{"min":Decimal("0"),"base":Decimal("0"),"rate":Decimal("0.10")},{"min":Decimal("16550"),"base":Decimal("1655"),"rate":Decimal("0.12")},{"min":Decimal("63100"),"base":Decimal("7206"),"rate":Decimal("0.22")},{"min":Decimal("100500"),"base":Decimal("15498"),"rate":Decimal("0.24")},{"min":Decimal("191950"),"base":Decimal("37236"),"rate":Decimal("0.32")},{"min":Decimal("243700"),"base":Decimal("53772"),"rate":Decimal("0.35")},{"min":Decimal("609350"),"base":Decimal("183074"),"rate":Decimal("0.37")}]
+}
 
 
